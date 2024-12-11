@@ -914,6 +914,7 @@ export const expectedSavedLayer0 = {
       elevationPercentile: [0, 100],
       elevationScale: 5,
       enableElevationZoomFactor: true,
+      fixedHeight: false,
       colorAggregation: 'count',
       sizeAggregation: 'count',
       enable3d: false
@@ -953,6 +954,7 @@ export const expectedLoadedLayer0 = {
       elevationPercentile: [0, 100],
       elevationScale: 5,
       enableElevationZoomFactor: true,
+      fixedHeight: false,
       colorAggregation: 'count',
       sizeAggregation: 'count',
       enable3d: false
@@ -1273,6 +1275,7 @@ export const mockKeplerProps = mockKeplerPropsWithState({state: StateWLayerStyle
 // hover over data index 15
 // tested in map-container-test
 export const expectedLayerHoverProp = {
+  currentTime: null,
   data: mockKeplerProps.visState.datasets[testCsvDataId].dataContainer.row(15),
   fields: mockKeplerProps.visState.datasets[testCsvDataId].fields,
   fieldsToShow:

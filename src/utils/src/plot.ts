@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright contributors to the kepler.gl project
 
-import {bisectLeft, bisector, extent, histogram as d3Histogram, ticks} from 'd3-array';
+import {bisectLeft, extent, histogram as d3Histogram, ticks} from 'd3-array';
 import isEqual from 'lodash.isequal';
 import {getFilterMappedValue, getInitialInterval, intervalToFunction} from './time';
 import moment from 'moment';
@@ -28,7 +28,6 @@ import {
   PLOT_TYPES,
   AggregationTypes
 } from '@kepler.gl/constants';
-import {VisState} from '@kepler.gl/schemas';
 
 import {roundValToStep} from './data-utils';
 import {aggregate, AGGREGATION_NAME} from './aggregation';
@@ -290,7 +289,7 @@ const getAgregationType = (field, aggregation) => {
   return aggregation;
 };
 
-const getAgregationAccessor = (field, dataContainer: DataContainerInterface, fields) => {
+const getAggregationAccessor = (field, dataContainer: DataContainerInterface, fields) => {
   if (isPercentField(field)) {
     const numeratorIdx = fields.findIndex(f => f.name === field.metadata.numerator);
     const denominatorIdx = fields.findIndex(f => f.name === field.metadata.denominator);
@@ -310,13 +309,19 @@ export const getValueAggrFunc = (
   dataset: KeplerTableModel<any, any>
 ): ((bin: Bin) => number) => {
   const {dataContainer, fields} = dataset;
-  return field && aggregation
+
+  // The passed-in field might not have all the fields set (e.g. valueAccessor)
+  const datasetField = fields.find(
+    f => field && (f.name === field || f.name === (field as Field).name)
+  );
+
+  return datasetField && aggregation
     ? bin =>
         aggregate(
           bin.indexes,
-          getAgregationType(field, aggregation),
+          getAgregationType(datasetField, aggregation),
           // @ts-expect-error can return {getNumerator, getDenominator}
-          getAgregationAccessor(field, dataContainer, fields)
+          getAggregationAccessor(datasetField, dataContainer, fields)
         )
     : bin => bin.count;
 };
@@ -343,9 +348,9 @@ function getDelta(
   };
 }
 
-export function getPctChange(y, y0) {
+export function getPctChange(y: unknown, y0: unknown): number | null {
   if (Number.isFinite(y) && Number.isFinite(y0) && y0 !== 0) {
-    return (y - y0) / y0;
+    return ((y as number) - (y0 as number)) / (y0 as number);
   }
   return null;
 }
@@ -440,29 +445,14 @@ export function splitSeries(series) {
   return {lines, markers};
 }
 
-export function filterSeriesByRange(series, range) {
-  if (!series) {
-    return [];
-  }
-  const [start, end] = range;
-  const inRange: any[] = [];
+type MinVisStateForAnimationWindow = {
+  datasets: Datasets;
+};
 
-  for (const serie of series) {
-    if (!serie.length) {
-      // eslint-disable-next-line no-console, no-undef
-      console.warn('Serie shouldnt be empty', series);
-    }
-
-    const i0 = bisector((s: {x: any}) => s.x).left(serie, start);
-    const i1 = bisector((s: {x: any}) => s.x).right(serie, end);
-    const sliced = serie.slice(i0, i1);
-    if (sliced.length) inRange.push(sliced);
-  }
-
-  return inRange;
-}
-
-export function adjustValueToAnimationWindow(state: VisState, filter: TimeRangeFilter) {
+export function adjustValueToAnimationWindow<S extends MinVisStateForAnimationWindow>(
+  state: S,
+  filter: TimeRangeFilter
+) {
   const {
     plotType,
     value: [value0, value1],
@@ -631,7 +621,10 @@ export function updateRangeFilterPlotType(
   };
 }
 
-export function getChartTitle(yAxis, plotType: {aggregation: string}) {
+export function getChartTitle(
+  yAxis: {displayName?: string},
+  plotType: {aggregation: string}
+): string {
   const yAxisName = yAxis?.displayName;
   const {aggregation} = plotType;
 

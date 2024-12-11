@@ -159,7 +159,7 @@ export {
 } from './map/map-legend';
 
 export {default as MapLegendPanelFactory} from './map/map-legend-panel';
-export {default as MapPopoverFactory} from './map/map-popover';
+export {default as MapPopoverFactory, getSelectedFeature} from './map/map-popover';
 export {default as MapPopoverContentFactory} from './map/map-popover-content';
 export {default as SplitMapButtonFactory} from './map/split-map-button';
 export {default as Toggle3dButtonFactory} from './map/toggle-3d-button';
@@ -224,6 +224,7 @@ export {default as MultiSelectFilterFactory} from './filters/multi-select-filter
 export {default as RangeFilterFactory} from './filters/range-filter';
 export {default as SingleSelectFilterFactory} from './filters/single-select-filter';
 export {default as TimeRangeFilterPanelFactory} from './filters/filter-panels/time-range-filter-panel';
+export {default as FilterSyncedDatasetPanelFactory} from './filters/filter-panels/filter-synced-dataset-panel';
 export {
   default as TimeRangeFilterFactory,
   timeRangeSliderFieldsSelector
@@ -369,6 +370,7 @@ export type {
   LayerTypeListItemType
 } from './side-panel/layer-panel/layer-type-list-item';
 export type {SingleColorPaletteProps} from './side-panel/layer-panel/single-color-palette';
+export type {SupportedColumnModeConfig} from './side-panel/layer-panel/layer-column-mode-config';
 export type {MapManagerProps} from './side-panel/map-manager';
 export type {LayerGroupColorPickerProps} from './side-panel/map-style-panel/map-layer-group-color-picker';
 export type {LayerGroupSelectorProps} from './side-panel/map-style-panel/map-layer-selector';
