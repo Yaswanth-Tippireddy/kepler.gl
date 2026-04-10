@@ -4,9 +4,9 @@
 import {GeoJsonLayer} from '@deck.gl/layers';
 import {EnhancedGridLayer} from '@kepler.gl/deckgl-layers';
 import AggregationLayer, {AggregationLayerConfig} from '../aggregation-layer';
-import {pointToPolygonGeo} from './grid-utils';
 import GridLayerIcon from './grid-layer-icon';
 import {
+  ColorRange,
   VisConfigBoolean,
   VisConfigColorRange,
   VisConfigNumber,
@@ -14,7 +14,7 @@ import {
   VisConfigSelection,
   Merge
 } from '@kepler.gl/types';
-import {AggregationTypes, ColorRange} from '@kepler.gl/constants';
+import {AggregationTypes} from '@kepler.gl/constants';
 
 export type GridLayerVisConfigSettings = {
   opacity: VisConfigNumber;
@@ -106,6 +106,10 @@ export default class GridLayer extends AggregationLayer {
     const cellSize = visConfig.worldUnitSize * 1000;
     const hoveredObject = this.hasHoveredObject(objectHovered);
 
+    // Use cellOutline computed in common space by ScaleEnhancedGridLayer.getPickingInfo
+    // so the outline aligns with rendered cells at all latitudes.
+    const outlineCoords = hoveredObject?.cellOutline;
+
     return [
       new EnhancedGridLayer({
         ...defaultAggregationLayerProps,
@@ -115,19 +119,21 @@ export default class GridLayer extends AggregationLayer {
       }),
 
       // render an outline of each cell if not extruded
-      ...(hoveredObject && !visConfig.enable3d
+      ...(outlineCoords && !visConfig.enable3d
         ? [
             new GeoJsonLayer({
               ...this.getDefaultHoverLayerProps(),
               visible: defaultAggregationLayerProps.visible,
               wrapLongitude: false,
               data: [
-                pointToPolygonGeo({
-                  object: hoveredObject,
-                  cellSize,
-                  coverage: visConfig.coverage,
-                  mapState
-                })
+                {
+                  type: 'Feature' as const,
+                  properties: {},
+                  geometry: {
+                    coordinates: outlineCoords,
+                    type: 'LineString' as const
+                  }
+                }
               ],
               getLineColor: this.config.highlightColor,
               lineWidthScale: 8 * zoomFactor

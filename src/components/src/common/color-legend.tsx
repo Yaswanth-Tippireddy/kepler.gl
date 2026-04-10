@@ -1,17 +1,20 @@
 // SPDX-License-Identifier: MIT
 // Copyright contributors to the kepler.gl project
 
-import {ColorRange} from '@kepler.gl/constants';
+import React, {useCallback, useMemo} from 'react';
+import styled, {css} from 'styled-components';
+
+import {SCALE_TYPES} from '@kepler.gl/constants';
 import {Layer} from '@kepler.gl/layers';
-import {HexColor, MapState} from '@kepler.gl/types';
+import {ColorRange, HexColor, MapState} from '@kepler.gl/types';
 import {
   getLayerColorScale,
   getLegendOfScale,
   getVisualChannelScaleByZoom,
+  colorMapToCategoricalColorBreaks,
   isObject
 } from '@kepler.gl/utils';
-import React, {useCallback, useMemo} from 'react';
-import styled, {css} from 'styled-components';
+
 import {Reset} from './icons';
 import {InlineInput} from './styled-components';
 
@@ -29,7 +32,8 @@ const inputCss = css`
 const StyledLegend = styled.div<{disableEdit: boolean; isExpanded?: boolean}>`
   ${props => props.theme.sidePanelScrollBar};
   ${props => (props.isExpanded ? '' : `max-height: 156px;`)};
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   margin-bottom: ${GAP}px;
   display: grid;
   grid-row-gap: ${GAP}px;
@@ -42,14 +46,17 @@ const StyledLegendRow = styled.div`
   display: flex;
   align-items: center;
   height: 20px;
+  min-width: 0;
 `;
 
 export function ResetColorLabelFactory() {
   return styled(Reset)`
     color: ${props => props.theme.labelColorLT};
     cursor: pointer;
+    flex-shrink: 0;
+    margin-left: ${GAP}px;
 
-    :hover {
+    &:hover {
       color: ${props => props.theme.panelHeaderIconHover};
     }
   `;
@@ -63,6 +70,10 @@ const StyleInlineInput = styled(InlineInput)`
   width: unset;
   padding: 2px;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   margin: 0 ${GAP}px;
   :hover {
     height: ${ROW_H}px;
@@ -122,6 +133,11 @@ const StyledLabel = styled.div`
   font-size: 10px;
   color: ${props => props.theme.textColor};
   padding-left: 2px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 export type LegendRowProps = {
@@ -152,7 +168,7 @@ export function LegendRowFactory(
       [color, onUpdateLabel]
     );
     const onReset = useCallback(() => onResetLabel && onResetLabel(color), [color, onResetLabel]);
-    const value = displayLabel ? label.toString() : '';
+    const value = displayLabel ? String(label ?? '') : '';
     return (
       <StyledLegendRow>
         <LegendColorDisplay color={color} />
@@ -203,7 +219,7 @@ type OverrideByCustomLegendOptions = {
   /**
    * Original Legends
    */
-  currentLegends: ReturnType<typeof getLegendOfScale>;
+  currentLegends?: ReturnType<typeof getLegendOfScale>;
 };
 
 /**
@@ -243,10 +259,22 @@ export function useLayerColorLegends(
     [scale, layer, mapState]
   );
 
-  const currentLegends = useMemo(
-    () => getLegendOfScale({scale: scaleByZoom, scaleType, labelFormat, fieldType}),
-    [scaleByZoom, scaleType, labelFormat, fieldType]
-  );
+  const currentLegends = useMemo(() => {
+    if (scaleType === SCALE_TYPES.customOrdinal && range?.colorMap) {
+      const colorBreaks = colorMapToCategoricalColorBreaks(range.colorMap);
+      return colorBreaks?.map(cb => {
+        return {
+          data: cb.data,
+          label: Array.isArray(cb.label)
+            ? cb.label.length > 5
+              ? `${cb.label.length} selected`
+              : cb.label
+            : cb.label || ''
+        };
+      });
+    }
+    return getLegendOfScale({scale: scaleByZoom, scaleType, labelFormat, fieldType});
+  }, [range, scaleByZoom, scaleType, labelFormat, fieldType]);
 
   const LegendsWithCustomLegends = useMemo(
     () =>
@@ -257,7 +285,7 @@ export function useLayerColorLegends(
     [range?.colorLegends, currentLegends]
   );
 
-  return LegendsWithCustomLegends;
+  return LegendsWithCustomLegends || [];
 }
 
 export type ColorLegendProps = {
@@ -336,7 +364,11 @@ function ColorLegendFactory(LegendRow: ReturnType<typeof LegendRowFactory>) {
     );
 
     return (
-      <StyledLegend disableEdit={disableEdit} isExpanded={isExpanded}>
+      <StyledLegend
+        className="styled-color-legend"
+        disableEdit={disableEdit}
+        isExpanded={isExpanded}
+      >
         {legends.map((legend, i) => (
           <LegendRow
             key={`${legend.data}-${i}`}

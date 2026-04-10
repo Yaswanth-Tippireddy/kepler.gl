@@ -2,9 +2,15 @@
 // Copyright contributors to the kepler.gl project
 
 import React, {useState, useEffect, createContext} from 'react';
-import isEqual from 'lodash.isequal';
-import pick from 'lodash.pick';
-import {MapViewState} from '@deck.gl/core/typed';
+import isEqual from 'lodash/isEqual';
+import pick from 'lodash/pick';
+type MapViewState = {
+  latitude: number;
+  longitude: number;
+  zoom: number;
+  bearing?: number;
+  pitch?: number;
+};
 import {pickViewportPropsFromMapState} from '@kepler.gl/reducers';
 
 import {MapState} from '@kepler.gl/types';

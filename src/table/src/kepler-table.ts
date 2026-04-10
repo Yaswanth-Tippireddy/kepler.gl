@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright contributors to the kepler.gl project
 
-import {console as Console} from 'global/console';
+import Console from 'global/console';
 import {ascending, descending} from 'd3-array';
 
 import {
@@ -28,7 +28,6 @@ import {
 
 import {getGpuFilterProps, getDatasetFieldIndexForFilter} from './gpu-filter-utils';
 
-import {Layer} from '@kepler.gl/layers';
 import {
   getSortingFunction,
   timeToUnixMilli,
@@ -50,6 +49,9 @@ import {
   FilterChanged
 } from '@kepler.gl/utils';
 import {generateHashId, notNullorUndefined} from '@kepler.gl/common-utils';
+
+// TODO isolate layer type, depends on @kepler.gl/layers
+type Layer = any;
 
 export type GpuFilter = {
   filterRange: number[][];
@@ -75,16 +77,19 @@ export type NumericFieldFilterProps = RangeFieldDomain & {
   type: string;
   typeOptions: string[];
   gpu: boolean;
+  columnStats?: Record<string, any>;
 };
 export type BooleanFieldFilterProps = SelectFieldDomain & {
   type: string;
   value: boolean;
   gpu: boolean;
+  columnStats?: Record<string, any>;
 };
 export type StringFieldFilterProps = MultiSelectFieldDomain & {
   type: string;
   value: string[];
   gpu: boolean;
+  columnStats?: Record<string, any>;
 };
 export type TimeFieldFilterProps = TimeRangeFieldDomain & {
   type: string;
@@ -92,6 +97,7 @@ export type TimeFieldFilterProps = TimeRangeFieldDomain & {
   fixedDomain: boolean;
   value: number[];
   gpu: boolean;
+  columnStats?: Record<string, any>;
 };
 
 // Unique identifier of each field
@@ -102,13 +108,14 @@ export function maybeToDate(
   fieldIdx: number,
   format: string,
   dc: DataContainerInterface,
-  d: {index: number}
+  // An object with row index or a materialized row array (for materialized hover info from trip layer)
+  d: {index: number} | any[]
 ) {
   if (isTime) {
-    return timeToUnixMilli(dc.valueAt(d.index, fieldIdx), format);
+    return timeToUnixMilli(Array.isArray(d) ? d[fieldIdx] : dc.valueAt(d.index, fieldIdx), format);
   }
 
-  return dc.valueAt(d.index, fieldIdx);
+  return Array.isArray(d) ? d[fieldIdx] : dc.valueAt(d.index, fieldIdx);
 }
 
 class KeplerTable<F extends Field = Field> {
@@ -145,7 +152,9 @@ class KeplerTable<F extends Field = Field> {
   disableDataOperation?: boolean;
 
   // table-injected metadata
-  metadata: object;
+  metadata: Record<string, any>;
+
+  getFileProcessor?: (data: any, inputFormat?: string) => {data: any; format: string};
 
   constructor({
     info,
@@ -196,12 +205,13 @@ class KeplerTable<F extends Field = Field> {
     this.gpuFilter = getGpuFilterProps([], this.id, [], undefined);
   }
 
-  importData({data}: {data: ProtoDataset['data']}) {
+  async importData({data}: {data: ProtoDataset['data']}) {
     const dataContainerData = data.cols ? data.cols : data.rows;
     const inputDataFormat = data.cols ? DataForm.COLS_ARRAY : DataForm.ROWS_ARRAY;
 
     const dataContainer = createDataContainer(dataContainerData, {
       fields: data.fields,
+      arrowTable: data.arrowTable,
       inputDataFormat
     });
 
@@ -230,8 +240,8 @@ class KeplerTable<F extends Field = Field> {
    * update table with new data
    * @param data - new data e.g. the arrow data with new batches loaded
    */
-  update(data: ProtoDataset['data']) {
-    const dataContainerData = data.cols ? data.cols : data.rows;
+  async update(data: ProtoDataset['data']) {
+    const dataContainerData = data.arrowTable ?? data.cols ?? data.rows;
     this.dataContainer.update?.(dataContainerData);
     this.allIndexes = this.dataContainer.getPlainIndex();
     this.filteredIndex = this.allIndexes;
@@ -475,6 +485,7 @@ class KeplerTable<F extends Field = Field> {
 
     switch (scaleType) {
       case SCALE_TYPES.ordinal:
+      case SCALE_TYPES.customOrdinal:
       case SCALE_TYPES.point:
         // do not recalculate ordinal domain based on filtered data
         // don't need to update ordinal domain every time
@@ -489,6 +500,7 @@ class KeplerTable<F extends Field = Field> {
       case SCALE_TYPES.quantize:
       case SCALE_TYPES.linear:
       case SCALE_TYPES.sqrt:
+      case SCALE_TYPES.custom:
       default:
         return getLinearDomain(filteredIndexForDomain, indexValueAccessor);
     }

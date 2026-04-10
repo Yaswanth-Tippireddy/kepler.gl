@@ -101,16 +101,16 @@ test('#ClusterLayer -> formatLayerData', t => {
         // 5: 2016-09-17 00:15:01 1474071301000 - 1
         // 7: 2016-09-17 00:17:05 1474071425000 - 1
         t.equal(
-          // assume all points fall into one bin
+          // getColorValue now counts only filtered points within the bin
           layerData.getColorValue(expectedLayerData.data),
-          5,
-          'should return unfiltered point count'
+          3,
+          'should return filtered point count'
         );
         t.equal(
-          // assume all points fall into one bin
+          // getElevationValue now counts only filtered points within the bin
           layerData.getElevationValue(expectedLayerData.data),
-          5,
-          'should return unfiltered point count'
+          3,
+          'should return filtered point count'
         );
         t.deepEqual(
           layerData.data.map(layerData._filterData),
@@ -172,10 +172,12 @@ test('#ClusterLayer -> formatLayerData', t => {
         // 4: driver_analytics - 1
         // 5: driver_analytics - 1
         // 7: driver_analytics - 1
+        // wrapOrdinalAccessor converts the string mode result to a stable
+        // numeric index (required by deck.gl 9's Float32Array aggregation).
+        // 'driver_analytics' is the first unique value → index 0.
         t.equal(
-          // assume all points fall into one bin
           layerData.getColorValue(expectedLayerData.data),
-          'driver_analytics',
+          0,
           'should return filtered mode of (types)'
         );
         t.deepEqual(
@@ -305,9 +307,18 @@ test('#ClusterLayer -> renderLayer', t => {
           expectedScatterplotData,
           'should pass correct data to cluster layer'
         );
+
+        const expectedColorDomain = {
+          domain: [1, 1, 1],
+          aggregatedBins: {
+            0: {i: 0, value: 1, counts: 1},
+            1: {i: 1, value: 1, counts: 1},
+            2: {i: 2, value: 1, counts: 1}
+          }
+        };
         t.deepEqual(
           spyLayerCallbacks.args[0][0],
-          [1, 1, 1],
+          expectedColorDomain,
           'should call onSetLayerDomain with correct domain'
         );
 

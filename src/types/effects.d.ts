@@ -3,11 +3,11 @@
 
 type EffectParameterDescription = {
   name: string;
-  type?: 'number' | 'array' | 'color';
+  type?: 'number' | 'array' | 'color' | 'checkbox';
   label?: string | false | (string | false)[];
   min: number;
   max: number;
-  defaultValue?: number | number[];
+  defaultValue?: number | number[] | boolean;
 };
 
 export type EffectDescription = {
@@ -46,4 +46,5 @@ export interface Effect {
   setProps(props: Partial<EffectProps>): void;
   isValidToSave(): boolean;
   getParameterDescriptions(): EffectParameterDescription[];
+  clone(): Effect;
 }

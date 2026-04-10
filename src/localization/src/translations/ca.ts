@@ -195,6 +195,8 @@ export default {
     disable3DMap: 'Desactiva mapa 3D',
     DrawOnMap: 'Dibuixa al mapa',
     selectLocale: 'Selecciona configuració regional',
+    showAiAssistantPanel: 'Mostra el tauler de AI Assistant',
+    hideAiAssistantPanel: 'Oculta el tauler de AI Assistant',
     hideLayerPanel: 'Oculta el tauler de capes',
     showLayerPanel: 'Mostra el tauler de capes',
     moveToTop: 'Desplaça a dalt de tot de les capes de dades',
@@ -252,6 +254,7 @@ export default {
       ratio16_9: '16:9',
       resolutionTitle: 'Resolució',
       resolutionDescription: 'Alta resolució és millor per a les impressions.',
+      resolutionPlaceholder: 'Selecciona resolució...',
       mapLegendTitle: 'Llegenda del mapa',
       mapLegendAdd: 'Afegir llegenda al mapa'
     },

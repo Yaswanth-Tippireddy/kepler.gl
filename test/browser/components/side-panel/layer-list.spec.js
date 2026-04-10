@@ -2,7 +2,7 @@
 // Copyright contributors to the kepler.gl project
 
 import React from 'react';
-import cloneDeep from 'lodash.clonedeep';
+import cloneDeep from 'lodash/cloneDeep';
 
 import {fireEvent, screen} from '@testing-library/react';
 import {dataTestIds} from '@kepler.gl/constants';
@@ -20,7 +20,7 @@ import {keplerGlReducerCore as keplerGlReducer} from '@kepler.gl/reducers';
 import {renderWithTheme} from '../../../helpers/component-jest-utils';
 import testLayerData from '../../../fixtures/test-layer-data';
 import {dataId as csvDataId} from '../../../fixtures/test-csv-data';
-import {applyActions} from '../../../helpers/mock-state';
+import {applyActions} from '../../../helpers/mock-state-utils';
 
 // TODO: need to be deleted and imported from raw-states
 const InitialState = keplerGlReducer(undefined, keplerGlInit({}));

@@ -7,8 +7,8 @@ import classnames from 'classnames';
 
 import {hexToRgb} from '@kepler.gl/utils';
 import {FormattedMessage} from '@kepler.gl/localization';
-import {Themes, ColorRange} from '@kepler.gl/constants';
-import {RGBColor, HexColor} from '@kepler.gl/types';
+import {Themes} from '@kepler.gl/constants';
+import {ColorRange, HexColor, RGBColor} from '@kepler.gl/types';
 
 import CustomPicker from './custom-picker';
 import PresetColorPalette from './color-palette-preset';
@@ -38,7 +38,7 @@ const StyledColorPickerTop = styled.div`
       color: ${({theme}) => theme.textColorHl};
       border-bottom-color: ${({theme}) => theme.panelToggleBorderColor};
     }
-    :hover {
+    &:hover {
       cursor: pointer;
       color: ${props => props.theme.textColorHl};
     }
@@ -58,9 +58,6 @@ const ColorPickerTop = ({setMode, mode}) => (
     ))}
   </StyledColorPickerTop>
 );
-
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-const nop = () => {};
 
 const SingleColorPalette: React.FC<SingleColorPaletteProps> = ({
   selectedColor,
@@ -85,9 +82,7 @@ const SingleColorPalette: React.FC<SingleColorPaletteProps> = ({
           selectedColor={selectedColor}
         />
       ) : null}
-      {mode === MODE.picker ? (
-        <CustomPicker color={selectedColor} onChange={onSetColor} onSwatchClose={nop} />
-      ) : null}
+      {mode === MODE.picker ? <CustomPicker color={selectedColor} onChange={onSetColor} /> : null}
     </div>
   );
 };

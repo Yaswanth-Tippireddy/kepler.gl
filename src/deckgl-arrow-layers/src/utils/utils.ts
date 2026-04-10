@@ -5,10 +5,14 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) vis.gl contributors
 
-import {assert} from '@deck.gl/core/typed';
 import * as arrow from 'apache-arrow';
 import * as ga from '@geoarrow/geoarrow-js';
 import {AccessorContext, AccessorFunction, _InternalAccessorContext} from '../types';
+import {isArrowFixedSizeList, isArrowStruct, isArrowVector} from '@kepler.gl/utils';
+
+export function assert(condition: unknown, message?: string): asserts condition {
+  if (!condition) throw new Error(message || 'assert');
+}
 
 export type TypedArray =
   | Uint8Array
@@ -45,14 +49,14 @@ function isDataInterleavedCoords(
   data: arrow.Data
 ): data is arrow.Data<arrow.FixedSizeList<arrow.Float64>> {
   // TODO: also check 2 or 3d? Float64?
-  return data.type instanceof arrow.FixedSizeList;
+  return isArrowFixedSizeList(data.type);
 }
 
 function isDataSeparatedCoords(
   data: arrow.Data
 ): data is arrow.Data<arrow.Struct<{x: arrow.Float64; y: arrow.Float64}>> {
   // TODO: also check child names? Float64?
-  return data.type instanceof arrow.Struct;
+  return isArrowStruct(data.type);
 }
 
 /**
@@ -62,8 +66,7 @@ function isDataSeparatedCoords(
  * this time deck.gl only supports interleaved.
  */
 // TODO: this hasn't been tested yet
-// @ts-expect-error
-function convertStructToFixedSizeList(
+export function convertStructToFixedSizeList(
   coords:
     | arrow.Data<arrow.FixedSizeList<arrow.Float64>>
     | arrow.Data<arrow.Struct<{x: arrow.Float64; y: arrow.Float64}>>
@@ -163,7 +166,7 @@ export function assignAccessor(args: AssignAccessorProps) {
     return;
   }
 
-  if (propInput instanceof arrow.Vector) {
+  if (isArrowVector(propInput)) {
     const columnData = propInput.data[chunkIdx];
 
     if (arrow.DataType.isFixedSizeList(columnData)) {
@@ -214,21 +217,24 @@ export function assignAccessor(args: AssignAccessorProps) {
  * @param input: the input array to expand
  * @param size : the number of nested elements in the input array per geometry. So for example, for RGB data this would be 3, for RGBA this would be 4. For radius, this would be 1.
  * @param geomOffsets : an offsets array mapping from the geometry to the coordinate indexes. So in the case of a LineStringArray, this is retrieved directly from the GeoArrow storage. In the case of a PolygonArray, this comes from the resolved indexes that need to be given to the SolidPolygonLayer anyways.
+ * @param numPositions : end position in geomOffsets, as geomOffsets can potentially contain preallocated zeroes in the end of the buffer.
  *
  * @return  {TypedArray} values expanded to be per-coordinate
  */
 export function expandArrayToCoords<T extends TypedArray>(
   input: T,
   size: number,
-  geomOffsets: Int32Array
+  geomOffsets: Int32Array,
+  numPositions?: number
 ): T {
-  const numCoords = geomOffsets[geomOffsets.length - 1];
+  const lastIndex = numPositions || geomOffsets.length - 1;
+  const numCoords = geomOffsets[lastIndex];
   // @ts-expect-error
   const outputArray: T = new input.constructor(numCoords * size);
 
   // geomIdx is an index into the geomOffsets array
   // geomIdx is also the geometry/table index
-  for (let geomIdx = 0; geomIdx < geomOffsets.length - 1; geomIdx++) {
+  for (let geomIdx = 0; geomIdx < lastIndex; geomIdx++) {
     // geomOffsets maps from the geometry index to the coord index
     // So here we get the range of coords that this geometry covers
     const lastCoordIdx = geomOffsets[geomIdx];

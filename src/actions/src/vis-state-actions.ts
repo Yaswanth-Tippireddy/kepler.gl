@@ -2,14 +2,15 @@
 // Copyright contributors to the kepler.gl project
 
 // vis-state-reducer
-import {PickInfo} from '@deck.gl/core/lib/deck';
 import {default as ActionTypes} from './action-types';
 import {FileCacheItem} from '@kepler.gl/processors';
 import {Layer, LayerBaseConfig} from '@kepler.gl/layers';
+import {KeplerTable} from '@kepler.gl/table';
 import {
   AddDataToMapPayload,
   ValueOf,
   Merge,
+  PickInfo,
   RGBColor,
   NestedPartial,
   LayerVisConfig,
@@ -21,11 +22,12 @@ import {
   ParsedConfig,
   ParsedLayer,
   EffectPropsPartial,
-  SyncTimelineMode
+  SyncTimelineMode,
+  AnimationConfig,
+  FilterAnimationConfig
 } from '@kepler.gl/types';
 import {createAction} from '@reduxjs/toolkit';
 
-import {KeplerTable} from '@kepler.gl/table';
 // TODO - import LoaderObject type from @loaders.gl/core when supported
 // TODO - import LoadOptions type from @loaders.gl/core when supported
 
@@ -59,7 +61,7 @@ export function applyLayerConfig(
 
 export type LayerConfigChangeUpdaterAction = {
   oldLayer: Layer;
-  newConfig: Partial<LayerBaseConfig>;
+  newConfig: Partial<Layer['config']>;
 };
 /**
  * Update layer base config: dataId, label, column, isVisible
@@ -78,6 +80,34 @@ export function layerConfigChange(
     newConfig
   };
 }
+
+export type LayerToggleVisibilityUpdaterAction = {
+  layerId: string;
+  isVisible: boolean;
+  splitMapId?: string;
+};
+
+/**
+ * Update layer visibility depends on splitMap single or dual
+ * @param layerId - layerId to be updated
+ * @param isVisible - whether this layer is visible globally
+ * @param splitMapId - id for this splitMap
+ * @returns action
+ * @public
+ */
+export function layerToggleVisibility(
+  layerId: string,
+  isVisible: boolean,
+  splitMapId?: string
+): Merge<LayerToggleVisibilityUpdaterAction, {type: typeof ActionTypes.LAYER_TOGGLE_VISIBILITY}> {
+  return {
+    type: ActionTypes.LAYER_TOGGLE_VISIBILITY,
+    layerId,
+    isVisible,
+    splitMapId
+  };
+}
+
 export type LayerTextLabelChangeUpdaterAction = {
   oldLayer: Layer;
   idx: number | 'all';
@@ -156,7 +186,7 @@ export function layerTypeChange(
 }
 export type LayerVisualChannelConfigChangeUpdaterAction = {
   oldLayer: Layer;
-  newConfig: Partial<LayerBaseConfig>;
+  newConfig: Partial<Layer['config']>;
   channel: string;
   newVisConfig?: Partial<LayerVisConfig>;
 };
@@ -294,6 +324,29 @@ export function interactionConfigChange(
   return {
     type: ActionTypes.INTERACTION_CONFIG_CHANGE,
     config
+  };
+}
+
+export type ApplyFilterConfigUpdaterAction = {
+  filterId: string;
+  newFilter: Filter;
+};
+
+/**
+ * Update filter config
+ * @param filterId - id of the filter to be updated
+ * @param newFilter - new filter config
+ * @returns action
+ * @public
+ */
+export function applyFilterConfig(
+  filterId: string,
+  newFilter: Filter
+): Merge<ApplyFilterConfigUpdaterAction, {type: typeof ActionTypes.APPLY_FILTER_CONFIG}> {
+  return {
+    type: ActionTypes.APPLY_FILTER_CONFIG,
+    filterId,
+    newFilter
   };
 }
 
@@ -787,7 +840,7 @@ export function setColumnDisplayFormat(
 }
 
 export type AddDataToMapUpdaterOptions = {
-  centrMap?: boolean;
+  centerMap?: boolean;
   readOnly?: boolean;
   keepExistingConfig?: boolean;
 };
@@ -928,6 +981,23 @@ export function updateFilterAnimationSpeed(
   };
 }
 
+export type SetAnimationConfigUpdaterAction = {
+  config: AnimationConfig | FilterAnimationConfig;
+};
+/**
+ * Set animation config: works with both layer animation and filter animation
+ * @param config
+ * @returns action
+ */
+export function setAnimationConfig(
+  config: AnimationConfig | FilterAnimationConfig
+): Merge<SetAnimationConfigUpdaterAction, {type: typeof ActionTypes.SET_ANIMATION_CONFIG}> {
+  return {
+    type: ActionTypes.SET_ANIMATION_CONFIG,
+    config
+  };
+}
+
 export type SetLayerAnimationTimeUpdaterAction = {
   value: number | null;
 };
@@ -1042,7 +1112,7 @@ export function toggleFilterFeature(
 }
 
 export type OnLayerHoverUpdaterAction = {
-  info: PickInfo<any> | null;
+  info: PickInfo | null;
   mapIndex?: number;
 };
 /**
@@ -1054,7 +1124,7 @@ export type OnLayerHoverUpdaterAction = {
  * @public
  */
 export function onLayerHover(
-  info: PickInfo<any> | null,
+  info: PickInfo | null,
   mapIndex?: number
 ): Merge<OnLayerHoverUpdaterAction, {type: typeof ActionTypes.LAYER_HOVER}> {
   return {
@@ -1065,7 +1135,7 @@ export function onLayerHover(
 }
 
 export type OnLayerClickUpdaterAction = {
-  info: PickInfo<any> | null;
+  info: PickInfo | null;
 };
 /**
  * Trigger layer click event with clicked object
@@ -1075,7 +1145,7 @@ export type OnLayerClickUpdaterAction = {
  * @public
  */
 export function onLayerClick(
-  info: PickInfo<any> | null
+  info: PickInfo | null
 ): Merge<OnLayerClickUpdaterAction, {type: typeof ActionTypes.LAYER_CLICK}> {
   return {
     type: ActionTypes.LAYER_CLICK,
@@ -1382,8 +1452,8 @@ export type SetEditorModeUpdaterAction = {
  * @returns action
  * @public
  * @example
- * import {setMapMode} from 'kepler.gl/actions';
- * import {EDITOR_MODES} from 'kepler.gl/constants';
+ * import {setMapMode} from '@kepler.gl/actions';
+ * import {EDITOR_MODES} from '@kepler.gl/constants';
  *
  * this.props.dispatch(setMapMode(EDITOR_MODES.DRAW_POLYGON));
  */
@@ -1559,11 +1629,45 @@ export function layerFilteredItemsChange(
   };
 }
 
+export type WMSFeatureInfoAction = {
+  layer: Layer;
+  featureInfo: Array<{name: string; value: string}> | string | null;
+  coordinate?: [number, number] | null;
+};
+
+/**
+ * WMS layer feature info callback
+ * @memberof visStateActions
+ * @param layer
+ * @param featureInfo
+ * @param coordinate
+ * @return action
+ */
+export function wmsFeatureInfo(
+  layer: WMSFeatureInfoAction['layer'],
+  featureInfo: WMSFeatureInfoAction['featureInfo'],
+  coordinate?: WMSFeatureInfoAction['coordinate']
+): Merge<WMSFeatureInfoAction, {type: typeof ActionTypes.WMS_FEATURE_INFO}> {
+  return {
+    type: ActionTypes.WMS_FEATURE_INFO,
+    layer,
+    featureInfo,
+    coordinate
+  };
+}
+
 export type SyncTimeFilterWithLayerTimelineAction = {
   idx: number;
   enable: boolean;
 };
 
+/**
+ * Sync time filter with layer timeline
+ * @memberof visStateActions
+ * @param idx
+ * @param enable
+ * @return action
+ */
 export function syncTimeFilterWithLayerTimeline(
   idx: SyncTimeFilterWithLayerTimelineAction['idx'],
   enable: SyncTimeFilterWithLayerTimelineAction['enable']
@@ -1583,6 +1687,13 @@ export type setTimeFilterSyncTimelineModeAction = {
   mode: SyncTimelineMode;
 };
 
+/**
+ * Set time filter sync timeline mode
+ * @memberof visStateActions
+ * @param id
+ * @param mode
+ * @return action
+ */
 export function setTimeFilterSyncTimelineMode({
   id,
   mode
@@ -1598,18 +1709,34 @@ export function setTimeFilterSyncTimelineMode({
 }
 
 export type CreateNewDatasetSuccessPayload = {
-  results: (PromiseFulfilledResult<KeplerTable<any>> | PromiseRejectedResult)[];
+  results: (PromiseFulfilledResult<KeplerTable> | PromiseRejectedResult)[];
   addToMapOptions: AddDataToMapPayload['options'];
 };
 
 /**
  * Called when a new dataset is created successfully via async table methods
+ * @memberof visStateActions
  * @param payload
  * @param payload.results - results of promises.allSettlted
  * @returns
  */
 export const createNewDatasetSuccess = createAction<CreateNewDatasetSuccessPayload>(
   ActionTypes.CREATE_NEW_DATASET_SUCCESS
+);
+
+export type SetLoadingIndicatorPayload = {
+  change: number;
+};
+
+/**
+ * Change of number of active loading items, used to render loading indicator.
+ * @memberof visStateActions
+ * @param payload
+ * @param payload.change Change of number of active loading actions.
+ * @public
+ */
+export const setLoadingIndicator = createAction<SetLoadingIndicatorPayload>(
+  ActionTypes.SET_LOADING_INDICATOR
 );
 
 /**

@@ -3,8 +3,7 @@
 
 import {createAction} from '@reduxjs/toolkit';
 import {default as ActionTypes} from './action-types';
-import {Merge} from '@kepler.gl/types';
-import {ExportImage} from '@kepler.gl/constants';
+import {Merge, ExportImage} from '@kepler.gl/types';
 
 /** TOGGLE_SIDE_PANEL */
 export type ToggleSidePanelUpdaterAction = {
@@ -17,7 +16,7 @@ export type ToggleSidePanelUpdaterAction = {
  * @public
  */
 export const toggleSidePanel: (
-  id: string | null
+  id: ToggleSidePanelUpdaterAction['payload']
 ) => Merge<ToggleSidePanelUpdaterAction, {type: typeof ActionTypes.TOGGLE_SIDE_PANEL}> =
   createAction(ActionTypes.TOGGLE_SIDE_PANEL, (id: string | null) => ({payload: id}));
 
@@ -154,6 +153,30 @@ export const setMapControlVisibility: (
     }
   })
 );
+
+/** SET_MAP_CONTROL_SETTINGS */
+export type setMapControlSettingsUpdaterAction = {
+  payload: {
+    panelId: string;
+    settings: Record<string, unknown>;
+  };
+};
+
+/**
+ * Set map control settings
+ * @memberof uiStateActions
+ * @param panelId - map control panel id, one of the keys of: [`DEFAULT_MAP_CONTROLS`](#default_map_controls)
+ * @public
+ */
+export const setMapControlSettings: (
+  panelId: string,
+  settings: Record<string, unknown>
+) => Merge<
+  setMapControlSettingsUpdaterAction,
+  {type: typeof ActionTypes.SET_MAP_CONTROL_SETTINGS}
+> = createAction(ActionTypes.SET_MAP_CONTROL_SETTINGS, (panelId, settings) => ({
+  payload: {panelId, settings}
+}));
 
 /** OPEN_DELETE_MODAL */
 export type OpenDeleteModalUpdaterAction = {

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright contributors to the kepler.gl project
 
-import React, {useState} from 'react';
-import styled from 'styled-components';
+import React, {useState, CSSProperties} from 'react';
+import styled, {IStyledComponent} from 'styled-components';
 import classnames from 'classnames';
 import {DraggableAttributes} from '@dnd-kit/core';
 import {CSS, Transform} from '@dnd-kit/utilities';
@@ -15,6 +15,7 @@ import {getFormatValue, getFormatLabels} from '@kepler.gl/utils';
 import TippyTooltip from '../../../common/tippy-tooltip';
 import {TooltipFormat} from '@kepler.gl/constants';
 import useOnClickOutside from '../../../hooks/use-on-click-outside';
+import {BaseComponentProps} from '../../../types';
 
 interface TooltipChickletProps {
   disabled: boolean;
@@ -38,10 +39,6 @@ type TooltipConfig = {
   compareType: string | null;
 };
 
-type IconDivProps = {
-  status: string | null;
-};
-
 const ChickletAddonWrapper = styled.div`
   position: relative;
 `;
@@ -59,33 +56,41 @@ const StyledPopover = styled.div`
 `;
 
 const hashStyles = {
-  SHOW: 'SHOW',
-  ACTIVE: 'ACTIVE'
+  SHOW: 'SHOW' as const,
+  ACTIVE: 'ACTIVE' as const
 };
 
-const IconDiv = styled.div.attrs({
+export type IconDivProps = BaseComponentProps & {
+  $status?: 'SHOW' | 'ACTIVE' | null;
+};
+
+const IconDiv: IStyledComponent<'web', IconDivProps> = styled.div.attrs({
   className: 'tooltip-chicklet__icon'
 })<IconDivProps>`
   color: ${props =>
-    props.status === hashStyles.SHOW
+    props.$status === hashStyles.SHOW
       ? props.theme.subtextColorActive
-      : props.status === hashStyles.ACTIVE
+      : props.$status === hashStyles.ACTIVE
       ? props.theme.activeColor
       : props.theme.textColor};
 `;
 
-type SortableStyledItemProps = {
-  transition?: string;
-  transform?: string;
+export type SortableStyledItemProps = BaseComponentProps & {
+  $transition?: CSSProperties['transition'];
+  $transform?: CSSProperties['transform'];
+  ref: (node: HTMLElement | null) => void;
 };
-const SortableStyledItem = styled.div<SortableStyledItemProps>`
-  transition: ${props => props.transition};
-  transform: ${props => props.transform};
+const SortableStyledItem: IStyledComponent<
+  'web',
+  SortableStyledItemProps
+> = styled.div<SortableStyledItemProps>`
+  transition: ${props => props.$transition};
+  transform: ${props => props.$transform};
   &.sorting {
     opacity: 0.3;
     pointer-events: none;
   }
-  :hover {
+  &:hover {
     .tooltip-chicklet__drag-handler {
       opacity: 1;
     }
@@ -100,7 +105,7 @@ const StyledDragHandle = styled.div.attrs({
   z-index: 1000;
   opacity: 0;
   margin-left: -5px;
-  :hover {
+  &:hover {
     cursor: move;
     color: ${props => props.theme.tooltipVerticalLineColor};
   }
@@ -125,6 +130,7 @@ function getFormatTooltip(formatLabels: TimeLabelFormat[], format: string | null
   return typeof format === 'object' ? JSON.stringify(format, null, 2) : String(format);
 }
 
+// TODO: a factory should take other factories as input
 function TooltipChickletFactory(
   dataId: string,
   config: TooltipConfig,
@@ -168,8 +174,8 @@ function TooltipChickletFactory(
       <SortableStyledItem
         ref={setNodeRef}
         className={classnames('sortable-layer-items', {sorting: isDragging})}
-        transform={CSS.Translate.toString(transform)}
-        transition={transition || ''}
+        $transform={CSS.Translate.toString(transform)}
+        $transition={transition || ''}
         {...attributes}
       >
         <ChickletButton>
@@ -192,7 +198,7 @@ function TooltipChickletFactory(
                 )}
               >
                 <ChickletAddon>
-                  <IconDiv status={hashStyle}>
+                  <IconDiv $status={hashStyle}>
                     <Hash
                       height="8px"
                       onClick={e => {
@@ -238,7 +244,7 @@ function TooltipChickletFactory(
               )}
             </ChickletAddonWrapper>
           )}
-          <Delete onClick={disabled ? null : remove} />
+          <Delete height="16px" onClick={disabled ? null : remove} />
         </ChickletButton>
       </SortableStyledItem>
     );

@@ -8,7 +8,9 @@ import styled from 'styled-components';
 import {
   EFFECT_DESCRIPTIONS,
   LIGHT_AND_SHADOW_EFFECT,
-  POSTPROCESSING_EFFECTS
+  POSTPROCESSING_EFFECTS,
+  DISTANCE_FOG_TYPE,
+  SURFACE_FOG_TYPE
 } from '@kepler.gl/constants';
 
 import PanelHeaderActionFactory, {PanelHeaderActionIcon} from '../side-panel/panel-header-action';
@@ -35,6 +37,8 @@ import {
   VignetteEffectIcon,
   MagnifyEffectIcon,
   HexagonalPixelateEffectIcon,
+  DistanceFogEffectIcon,
+  SurfaceFogEffectIcon,
   BaseProps
 } from '../common/icons';
 import {StyledPanelHeader} from '../common/styled-components';
@@ -99,7 +103,9 @@ const defaultEffectIcons = {
   [POSTPROCESSING_EFFECTS.edgeWork.type]: EdgeWorkEffectIcon,
   [POSTPROCESSING_EFFECTS.vignette.type]: VignetteEffectIcon,
   [POSTPROCESSING_EFFECTS.magnify.type]: MagnifyEffectIcon,
-  [POSTPROCESSING_EFFECTS.hexagonalPixelate.type]: HexagonalPixelateEffectIcon
+  [POSTPROCESSING_EFFECTS.hexagonalPixelate.type]: HexagonalPixelateEffectIcon,
+  [DISTANCE_FOG_TYPE]: DistanceFogEffectIcon,
+  [SURFACE_FOG_TYPE]: SurfaceFogEffectIcon
 };
 
 const StyledEffectPanelHeader = styled(StyledPanelHeader)`
@@ -118,7 +124,7 @@ const StyledEffectPanelHeader = styled(StyledPanelHeader)`
     margin: 10px 10px 10px 5px;
   }
 
-  :hover {
+  &:hover {
     cursor: pointer;
     background-color: ${props => props.theme.panelBackgroundHover};
     .effect__drag-handle {
@@ -135,7 +141,7 @@ const HeaderActionSection = styled.div`
   height: 100%;
   align-items: stretch;
   right: 10px;
-  :hover {
+  &:hover {
     .effect-panel__header__actions__hidden {
       opacity: 1;
       background-color: ${props => props.theme.panelBackgroundHover};
@@ -155,7 +161,7 @@ const StyledPanelHeaderHiddenActions = styled.div.attrs({
   background-color: ${props =>
     props.isConfigActive ? props.theme.panelBackgroundHover : props.theme.panelBackground};
 
-  :hover {
+  &:hover {
     opacity: 1;
   }
 `;
@@ -165,7 +171,7 @@ const StyledDragHandle = styled.div`
   align-items: center;
   opacity: 0;
   z-index: 1000;
-  :hover {
+  &:hover {
     cursor: move;
     opacity: 1;
     color: ${props => props.theme.textColorHl};

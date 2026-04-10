@@ -4,11 +4,13 @@
 import {combineReducers, createStore, applyMiddleware, compose} from 'redux';
 import {routerReducer, routerMiddleware} from 'react-router-redux';
 import {browserHistory} from 'react-router';
-import {enhanceReduxMiddleware} from '@kepler.gl/reducers';
 import {createLogger} from 'redux-logger';
 import thunk from 'redux-thunk';
+
+import {enhanceReduxMiddleware} from '@kepler.gl/reducers';
+
 // eslint-disable-next-line no-unused-vars
-import window from 'global/window';
+import Window from 'global/window';
 
 import demoReducer from './reducers/index';
 
@@ -19,11 +21,14 @@ const reducers = combineReducers({
 
 export const middlewares = enhanceReduxMiddleware([thunk, routerMiddleware(browserHistory)]);
 
-// eslint-disable-next-line no-process-env
+const NOISY_ACTIONS = new Set(['@@kepler.gl/MOUSE_MOVE', '@@kepler.gl/LAYER_HOVER']);
+
+// Set window.__KEPLER_LOG_FULL__ = true in the console to include
+// high-frequency actions (MOUSE_MOVE, LAYER_HOVER, UPDATE_MAP).
 if (NODE_ENV === 'local') {
-  // Redux logger
   const logger = createLogger({
-    collapsed: () => true // Collapse all actions for more compact log
+    collapsed: () => true,
+    predicate: (_getState, action) => Window.__KEPLER_LOG_FULL__ || !NOISY_ACTIONS.has(action.type)
   });
   middlewares.push(logger);
 }
@@ -39,13 +44,9 @@ let composeEnhancers = compose;
  * comment out code below to enable Redux Devtools
  */
 
-if (window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__) {
-  composeEnhancers = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__({
-    actionsBlacklist: [
-      '@@kepler.gl/MOUSE_MOVE',
-      '@@kepler.gl/UPDATE_MAP',
-      '@@kepler.gl/LAYER_HOVER'
-    ]
+if (Window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__) {
+  composeEnhancers = Window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__({
+    actionsBlacklist: [...NOISY_ACTIONS]
   });
 }
 

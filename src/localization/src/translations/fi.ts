@@ -193,6 +193,8 @@ export default {
     disable3DMap: 'Poistu 3D-näkymästä',
     DrawOnMap: 'Piirrä kartalle',
     selectLocale: 'Valitse kielisyys',
+    showAiAssistantPanel: 'Näytä AI-apuohjelman paneeli',
+    hideAiAssistantPanel: 'Piilota AI-apuohjelman paneeli',
     hideLayerPanel: 'Piilota tasopaneeli',
     showLayerPanel: 'Näytä tasopaneeli',
     moveToTop: 'Siirrä tasojen päällimmäiseksi',
@@ -244,6 +246,7 @@ export default {
       ratio16_9: '16:9',
       resolutionTitle: 'Resoluutio',
       resolutionDescription: 'Korkea resoluutio on parempi tulostamista varten.',
+      resolutionPlaceholder: 'Valitse resoluutio...',
       mapLegendTitle: 'Kartan selite',
       mapLegendAdd: 'Lisää selite karttaan'
     },

@@ -2,7 +2,7 @@
 // Copyright contributors to the kepler.gl project
 
 import test from 'tape';
-import cloneDeep from 'lodash.clonedeep';
+import cloneDeep from 'lodash/cloneDeep';
 import {processCsvData, processGeojson} from '@kepler.gl/processors';
 import {LayerClasses, KeplerGlLayers} from '@kepler.gl/layers';
 import {GEOJSON_FIELDS} from '@kepler.gl/constants';
@@ -164,7 +164,7 @@ test('layerUtils -> findDefaultLayer.1', t => {
       }
     }),
     new PointLayer({
-      label: 'point',
+      label: 'Point',
       dataId,
       columns: {
         lat: {
@@ -596,7 +596,7 @@ test('layerUtils -> findDefaultLayer:GeojsonLayer', t => {
   });
 
   // eslint-disable-next-line no-unused-vars
-  const [layer1Color, layer2Color, layer2Stroke] = getNextColorMakerValue(3);
+  const [_layer1Color, _layer2Color, layer2Stroke] = getNextColorMakerValue(3);
   expected1.updateLayerVisConfig({filled: true, stroked: false});
   expected2.updateLayerVisConfig({
     filled: true,
@@ -664,8 +664,7 @@ test('layerUtils -> findDefaultLayer:GeojsonLayer.wkt', t => {
     }
   });
 
-  // eslint-disable-next-line no-unused-vars
-  const [layer1Color, strokeColor1, layer2Color, strokeColor2] = getNextColorMakerValue(4);
+  const [_layer1Color, strokeColor1, _layer2Color, strokeColor2] = getNextColorMakerValue(4);
   expected1.updateLayerVisConfig({
     filled: true,
     stroked: true,

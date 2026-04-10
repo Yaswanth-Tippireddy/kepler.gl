@@ -3,8 +3,8 @@
 
 import React, {Component, createRef, ComponentType, MouseEventHandler, RefObject} from 'react';
 import classnames from 'classnames';
-import uniqBy from 'lodash.uniqby';
-import styled from 'styled-components';
+import uniqBy from 'lodash/uniqBy';
+import styled, {IStyledComponent} from 'styled-components';
 
 import Accessor from './accessor';
 import ChickletedInput from './chickleted-input';
@@ -16,13 +16,16 @@ import {toArray} from '@kepler.gl/common-utils';
 import {injectIntl, IntlShape} from 'react-intl';
 import {ListItemProps} from './dropdown-select';
 import DropdownSelect from './dropdown-select';
+import {shouldForwardProp} from '../styled-components';
 
-interface DropdownWrapperProps {
+export type DropdownWrapperProps = {
   placement?: string;
   width: number;
-}
+};
 
-const DropdownWrapper = styled.div<DropdownWrapperProps>`
+const DropdownWrapper: IStyledComponent<'web', DropdownWrapperProps> = styled.div.withConfig({
+  shouldForwardProp
+})<DropdownWrapperProps>`
   border: 0;
   width: 100%;
   left: 0;

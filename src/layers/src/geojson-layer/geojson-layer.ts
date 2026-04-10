@@ -5,7 +5,7 @@ import * as arrow from 'apache-arrow';
 import {point as turfPoint} from '@turf/helpers';
 import booleanWithin from '@turf/boolean-within';
 import {Feature, Polygon} from 'geojson';
-import uniq from 'lodash.uniq';
+import uniq from 'lodash/uniq';
 import {DATA_TYPES} from 'type-analyzer';
 import Layer, {
   colorMaker,
@@ -18,14 +18,15 @@ import Layer, {
   LayerSizeConfig,
   LayerStrokeColorConfig
 } from '../base-layer';
-import {GeoJsonLayer as DeckGLGeoJsonLayer} from '@deck.gl/layers';
+import {GeoJsonLayer as DeckGLGeoJsonLayer, GeoJsonLayerProps} from '@deck.gl/layers';
 import {
   getGeojsonLayerMeta,
   GeojsonDataMaps,
   DeckGlGeoTypes,
   detectTableColumns,
   COLUMN_MODE_GEOJSON,
-  applyFiltersToTableColumns
+  applyFiltersToTableColumns,
+  fieldIsGeoArrow
 } from './geojson-utils';
 import {
   getGeojsonLayerMetaFromArrow,
@@ -37,11 +38,11 @@ import {
   GEOJSON_FIELDS,
   HIGHLIGH_COLOR_3D,
   CHANNEL_SCALES,
-  ColorRange,
   LAYER_VIS_CONFIGS,
   DEFAULT_COLOR_UI
 } from '@kepler.gl/constants';
 import {
+  ColorRange,
   VisConfigNumber,
   VisConfigColorSelect,
   VisConfigColorRange,
@@ -214,6 +215,9 @@ export const defaultElevation = 500;
 export const defaultLineWidth = 1;
 export const defaultRadius = 1;
 
+// don't use strokes by default for datasets with large number of polygons
+const DEFAULT_POLYGON_STROKE_LIMIT = 100000;
+
 export const COLUMN_MODE_TABLE = 'table';
 const SUPPORTED_COLUMN_MODES = [
   {
@@ -234,6 +238,7 @@ export default class GeoJsonLayer extends Layer {
   declare config: GeoJsonLayerConfig;
   declare visConfigSettings: GeoJsonVisConfigSettings;
   declare meta: GeoJsonLayerMeta;
+  declare geoArrowMode: boolean;
 
   dataToFeature: GeojsonDataMaps = [];
   dataContainer: DataContainerInterface | null = null;
@@ -430,7 +435,7 @@ export default class GeoJsonLayer extends Layer {
   getHoverData(object, dataContainer) {
     // index of dataContainer is saved to feature.properties
     // for arrow format, `object` is the index of the row returned from deck
-    const index = dataContainer instanceof ArrowDataContainer ? object : object?.properties?.index;
+    const index = this.geoArrowMode ? object : object?.properties?.index;
     if (index >= 0) {
       return dataContainer.row(index);
     }
@@ -456,8 +461,12 @@ export default class GeoJsonLayer extends Layer {
   }
 
   calculateDataAttribute(dataset: KeplerTable) {
+    this.geoArrowMode = fieldIsGeoArrow(
+      geoFieldAccessor(this.config.columns)(dataset.dataContainer)
+    );
+
     const {dataContainer, filteredIndex} = dataset;
-    if (dataContainer instanceof ArrowDataContainer) {
+    if (this.geoArrowMode) {
       // TODO add columnMode logic here for ArrowDataContainer?
       // filter geojson/arrow table by values and make a partial copy of the raw table are expensive
       // so we will use filteredIndex to create an attribute e.g. filteredIndex [0|1] for GPU filtering
@@ -506,10 +515,13 @@ export default class GeoJsonLayer extends Layer {
     let dataAccessor;
     if (this.config.columnMode === COLUMN_MODE_GEOJSON) {
       filterValueAccessor = (dc, d, fieldIndex) => dc.valueAt(d.properties.index, fieldIndex);
+      // For GEOJSON mode, properties.index is the row index in the data container
       dataAccessor = () => d => ({index: d.properties.index});
     } else {
       filterValueAccessor = getTableModeValueAccessor;
-      dataAccessor = () => d => ({index: d.properties.index});
+      // For TABLE mode, properties.index is the feature index (not row index).
+      // Use the first row from properties.values to get field values for color/size.
+      dataAccessor = () => d => d.properties.values[0];
     }
 
     const indexAccessor = f => f.properties.index;
@@ -547,10 +559,16 @@ export default class GeoJsonLayer extends Layer {
     return booleanWithin(turfPoint(point), polygon);
   }
 
-  updateLayerMeta(dataContainer) {
+  updateLayerMeta(dataset: KeplerTable) {
+    const {dataContainer} = dataset;
+
     this.dataContainer = dataContainer;
 
-    if (dataContainer instanceof ArrowDataContainer) {
+    this.geoArrowMode = fieldIsGeoArrow(
+      geoFieldAccessor(this.config.columns)(dataset.dataContainer)
+    );
+
+    if (this.geoArrowMode && dataContainer instanceof ArrowDataContainer) {
       const geoColumn = geoColumnAccessor(this.config.columns)(dataContainer);
       const geoField = geoFieldAccessor(this.config.columns)(dataContainer);
 
@@ -570,7 +588,7 @@ export default class GeoJsonLayer extends Layer {
         this.updateMeta({bounds, fixedRadius, featureTypes});
         this.dataToFeature = [...this.dataToFeature, ...dataToFeature];
       }
-    } else if (this.dataToFeature.length === 0) {
+    } else if (this.dataToFeature.length === 0 || this.config.columnMode === COLUMN_MODE_TABLE) {
       const getFeature = this.getPositionAccessor(dataContainer);
 
       const {dataToFeature, bounds, fixedRadius, featureTypes, centroids} = getGeojsonLayerMeta({
@@ -584,7 +602,7 @@ export default class GeoJsonLayer extends Layer {
     }
   }
 
-  setInitialLayerConfig(dataset) {
+  setInitialLayerConfig(dataset: KeplerTable) {
     const {dataContainer} = dataset;
     if (!dataContainer.numRows()) {
       return this;
@@ -600,10 +618,12 @@ export default class GeoJsonLayer extends Layer {
           ...columnConfig,
           columnMode: COLUMN_MODE_TABLE
         });
+      } else {
+        return this;
       }
     }
 
-    this.updateLayerMeta(dataContainer);
+    this.updateLayerMeta(dataset);
 
     const {featureTypes} = this.meta;
     // default settings is stroke: true, filled: false
@@ -611,25 +631,32 @@ export default class GeoJsonLayer extends Layer {
       // set both fill and stroke to true
       return this.updateLayerVisConfig({
         filled: true,
-        stroked: true,
+        stroked: dataContainer.numRows() < DEFAULT_POLYGON_STROKE_LIMIT,
         strokeColor: colorMaker.next().value
       });
     } else if (featureTypes && featureTypes.point) {
       // set fill to true if detect point
       return this.updateLayerVisConfig({filled: true, stroked: false});
+    } else if (featureTypes && featureTypes.line) {
+      // for line features, set strokeColor so the color picker reflects the actual rendered color
+      return this.updateLayerVisConfig({
+        stroked: true,
+        filled: false,
+        strokeColor: colorMaker.next().value
+      });
     }
 
     return this;
   }
 
   isLayerHovered(objectInfo: ObjectInfo): boolean {
-    return this.dataContainer instanceof ArrowDataContainer
+    return this.geoArrowMode
       ? isLayerHoveredFromArrow(objectInfo, this.id)
       : super.isLayerHovered(objectInfo);
   }
 
   hasHoveredObject(objectInfo: ObjectInfo): Feature | null {
-    return this.dataContainer instanceof ArrowDataContainer
+    return this.geoArrowMode
       ? getHoveredObjectFromArrow(
           objectInfo,
           this.dataContainer,
@@ -678,7 +705,7 @@ export default class GeoJsonLayer extends Layer {
     const {data, ...props} = dataProps;
 
     // arrow table can have multiple chunks, a deck.gl layer is created for each chunk
-    const deckLayerData = this.dataContainer instanceof ArrowDataContainer ? data : [data];
+    const deckLayerData = this.geoArrowMode ? data : [data];
     const deckLayers = deckLayerData.map((d, i) => {
       return new DeckGLGeoJsonLayer({
         ...defaultLayerProps,
@@ -723,7 +750,7 @@ export default class GeoJsonLayer extends Layer {
               ...layerProps,
               visible: defaultLayerProps.visible,
               wrapLongitude: false,
-              data: [hoveredObject],
+              data: [hoveredObject] as Feature[],
               getLineWidth: props.getLineWidth,
               getPointRadius: props.getPointRadius,
               getElevation: props.getElevation,
@@ -732,7 +759,7 @@ export default class GeoJsonLayer extends Layer {
               // always draw outline
               stroked: true,
               filled: false
-            })
+            } as unknown as GeoJsonLayerProps)
           ]
         : [])
     ];

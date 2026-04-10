@@ -5,8 +5,8 @@
 
 export {
   colorMaybeToRGB,
+  colorRangeBackwardCompatibility,
   createLinearGradient,
-  getColorGroupByName,
   hasColorMap,
   hexToRgb,
   isHexColor,
@@ -14,11 +14,17 @@ export {
   normalizeColor,
   reverseColorRange,
   rgbToHex,
-  updateColorRange,
   addCustomPaletteColor,
   removeCustomPaletteColor,
   sortCustomPaletteColor,
-  updateCustomPaletteColor
+  updateCustomPaletteColor,
+  updateColorRangeBySelectedPalette,
+  paletteIsSteps,
+  paletteIsType,
+  paletteIsColorBlindSafe,
+  updateColorRangeByMatchingPalette,
+  updateCustomColorRangeByColorUI,
+  initializeCustomPalette
 } from './color-utils';
 export {errorNotification} from './notifications-utils';
 
@@ -31,7 +37,9 @@ export {
   adjustValueToAnimationWindow,
   getBinThresholds,
   histogramFromThreshold,
+  histogramFromValues,
   histogramFromDomain,
+  histogramFromOrdinal,
   runGpuFilterForPlot,
   updateTimeFilterPlotType
 } from './plot';
@@ -74,7 +82,7 @@ export {
   isMSEdge
 } from './export-utils';
 export {getFormatValue, getDefaultTimeFormat} from './format';
-export {setLayerBlending} from './gl-utils';
+export {getLayerBlendingParameters, patchDeckRendererForPostProcessing} from './gl-utils';
 export {flattenMessages, mergeMessages} from './locale-utils';
 export {isValidMapInfo} from './map-info-utils';
 export {
@@ -87,9 +95,13 @@ export {
   scaleMapStyleByResolution
 } from './map-style-utils/mapbox-gl-style-editor';
 export {validateToken} from './mapbox-utils';
-export * from './observe-dimensions';
+export {
+  default as useDimensions,
+  observeDimensions,
+  unobserveDimensions
+} from './observe-dimensions';
 export type {Dimensions} from './observe-dimensions';
-export {snapToMarks} from './plot';
+export {snapToMarks, getTimeBins} from './plot';
 export * from './projection-utils';
 export * from './split-map-utils';
 export * from './utils';
@@ -102,7 +114,12 @@ export {
 } from './effect-utils';
 
 // Mapbox
-export {isStyleUsingMapboxTiles, transformRequest} from './map-style-utils/mapbox-utils';
+export {
+  isStyleUsingMapboxTiles,
+  isStyleUsingOpenStreetMapTiles,
+  getBaseMapLibrary,
+  transformRequest
+} from './map-style-utils/mapbox-utils';
 
 // Map
 export * from './map-utils';
@@ -110,7 +127,11 @@ export * from './map-utils';
 export {
   ArrowDataContainer,
   arrowDataTypeToAnalyzerDataType,
-  arrowDataTypeToFieldType
+  arrowDataTypeToFieldType,
+  isArrowTable,
+  isArrowFixedSizeList,
+  isArrowStruct,
+  isArrowVector
 } from './arrow-data-container';
 export type {DataContainerInterface} from './data-container-interface';
 export {
@@ -124,6 +145,7 @@ export type {FilterChanged, FilterResult, dataValueAccessor} from './filter-util
 
 export {
   colorMapToColorBreaks,
+  colorBreaksToColorMap,
   getLayerColorScale,
   getLegendOfScale,
   getLinearDomain,
@@ -137,7 +159,18 @@ export {
   isDomainStops,
   isDomainQuantile,
   getDomainStepsbyZoom,
-  getThresholdsFromQuantiles
+  getThresholdsFromQuantiles,
+  getQuantLabelFormat,
+  getHistogramDomain,
+  getQuantLegends,
+  getCategoricalColorMap,
+  getCategoricalColorScale,
+  initCustomPaletteByCustomScale,
+  colorMapToCategoricalColorBreaks,
+  resetCategoricalColorMapByIndex,
+  selectRestCategoricalColorMapByIndex,
+  removeCategoricalValueFromColorMap,
+  addCategoricalValuesToColorMap
 } from './data-scale-utils';
 export type {ColorBreak, ColorBreakOrdinal, DomainQuantiles, DomainStops} from './data-scale-utils';
 
@@ -145,4 +178,17 @@ export {DataRow} from './data-row';
 
 // Application config
 export {getApplicationConfig, initApplicationConfig} from './application-config';
-export type {KeplerApplicationConfig, MapLibInstance} from './application-config';
+export type {
+  KeplerApplicationConfig,
+  BaseMapLibraryConfig,
+  MapLibInstance,
+  GetMapRef
+} from './application-config';
+export type {DatabaseAdapter, DatabaseConnection} from './application-config-types';
+
+// Browser utils
+export {isAppleDevice} from './browser-utils';
+
+export {default as quickInsertionSort} from './quick-insertion-sort';
+
+export type {KeplerTableModel} from './types';

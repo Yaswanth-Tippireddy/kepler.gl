@@ -6,6 +6,26 @@ export type RGBAColor = [number, number, number, number];
 export type HexColor = string; // this is the best typescript can do at the moment
 export type Millisecond = number;
 
+/**
+ * Deck.gl picking info with relaxed layer generics for compatibility with DeckGL React callbacks.
+ * deck.gl 9's DeckGL component infers callback parameter types that are structurally incompatible
+ * with `PickingInfo` from `@deck.gl/core` (missing `color`/`pixelRatio`, different `Layer` generic).
+ */
+export type PickInfo<DataT = any> = {
+  layer?: {id: string; state?: Record<string, any>} | null;
+  sourceLayer?: {id: string} | null;
+  viewport?: {width?: number; height?: number} | null;
+  index: number;
+  picked?: boolean;
+  object?: DataT;
+  x: number;
+  y: number;
+  pixel?: [number, number];
+  coordinate?: number[];
+  color?: Uint8Array | null;
+  pixelRatio?: number;
+};
+
 export type ValueOf<T> = T[keyof T];
 
 export type Merge<A, B> = {[K in keyof A]: K extends keyof B ? B[K] : A[K]} & B extends infer O
@@ -32,4 +52,29 @@ export type ProcessorResult = {
   rows: any[][];
   cols?: any[];
   metadata?: any;
+  /** Optional schema for arrow tables with metadata preserved. */
+  // TODO: Should we use a loaded arrow.Table in cols instead of an array of arrow.Vectors? Why was an array of arrow.Vectors chosen?
+  arrowSchema?: any;
 } | null;
+
+export type Json = JsonScalar | JsonArray | JsonObject;
+export type JsonObjectOrArray = JsonArray | JsonObject;
+export type JsonScalar = string | number | boolean | null;
+export type JsonArray = Json[];
+export type JsonObject = {
+  [key: string]: Json | undefined;
+};
+
+/**
+ * Types to mock apache-arrow types
+ */
+
+export interface ApacheVectorInterface {
+  length: number;
+}
+
+export interface ArrowTableInterface {
+  get numRows(): number;
+
+  getChildAt: (index: number) => Vector;
+}

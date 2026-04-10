@@ -16,6 +16,79 @@ Kepler.gl is built on top of [Mapbox GL](https://www.mapbox.com). A mapbox accou
 
 ![Basic Usage][basic-usage]
 
+#### 0. Working Template
+
+Check full example on [Github](https://github.com/keplergl/kepler.gl/tree/master/examples/get-started).
+
+```js
+import * as React from "react";
+import ReactDOM from "react-dom/client";
+import document from "global/document";
+
+import { applyMiddleware, combineReducers, compose, createStore } from "redux";
+import { connect, Provider } from "react-redux";
+
+import keplerGlReducer, { enhanceReduxMiddleware } from "@kepler.gl/reducers";
+import KeplerGl from "@kepler.gl/components";
+
+import AutoSizer from "react-virtualized/dist/commonjs/AutoSizer";
+
+const reducers = combineReducers({
+  keplerGl: keplerGlReducer.initialState({
+    uiState: {
+      readOnly: false,
+      currentModal: null,
+    },
+  }),
+});
+
+const middleWares = enhanceReduxMiddleware([
+  // Add other middlewares here
+]);
+
+const enhancers = applyMiddleware(...middleWares);
+
+const initialState = {};
+const store = createStore(reducers, initialState, compose(enhancers));
+
+const App = () => (
+  <div
+    style={{
+      position: "absolute",
+      top: "0px",
+      left: "0px",
+      width: "100%",
+      height: "100%",
+    }}
+  >
+    <AutoSizer>
+      {({ height, width }) => (
+        <KeplerGl
+          mapboxApiAccessToken="xxx" // Replace with your mapbox token
+          id="map"
+          width={width}
+          height={height}
+        />
+      )}
+    </AutoSizer>
+  </div>
+);
+
+const mapStateToProps = (state) => state;
+const dispatchToProps = (dispatch) => ({ dispatch });
+const ConnectedApp = connect(mapStateToProps, dispatchToProps)(App);
+const Root = () => (
+  <Provider store={store}>
+    <ConnectedApp />
+  </Provider>
+);
+
+export default Root;
+```
+
+
+
+
 #### 1. Mount reducer
 
 Kepler.gl uses [Redux](https://redux.js.org/) to manage its internal state, along with [react-palm](https://github.com/btford/react-palm) middleware to handle side effects. Mount kepler.gl reducer in your store, apply  `taskMiddleware`.

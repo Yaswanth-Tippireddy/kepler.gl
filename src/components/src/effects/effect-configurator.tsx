@@ -139,6 +139,34 @@ const RegularSliderWrapper = styled.div.attrs({
   }
 `;
 
+const StyledCheckboxWrapper = styled.div.attrs({
+  className: 'effect-configurator__pp-section-checkbox'
+})`
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+`;
+
+const StyledCheckbox = styled.input`
+  margin-right: 6px;
+  cursor: pointer;
+  accent-color: ${props => props.theme.activeColor};
+`;
+
+const StyledCheckboxLabel = styled.label`
+  font-size: ${props => props.theme.inputFontSize};
+  color: ${props => props.theme.effectPanelTextSecondary1};
+  cursor: pointer;
+  white-space: nowrap;
+`;
+
+const StyledColorCheckboxRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+`;
+
 const COMMON_SLIDER_PROPS = {
   showInput: true,
   isRanged: false,
@@ -148,9 +176,11 @@ const COMMON_SLIDER_PROPS = {
 
 type EffectParameterDescriptionFlattened = {
   name: string;
+  type?: 'number' | 'array' | 'color' | 'checkbox';
   label?: string | false | (string | false)[];
   min: number;
   max: number;
+  defaultValue?: number | number[] | boolean;
   index?: number;
 };
 
@@ -283,12 +313,15 @@ export default function EffectConfiguratorFactory(
     effect,
     updateEffectConfig
   }) => {
-    const uniforms = effect.deckEffect?.module.uniforms || defaultUniforms;
+    const uniforms = effect.deckEffect?.module.propTypes || defaultUniforms;
     const parameterDescriptions = effect.getParameterDescriptions();
     const {parameters, id} = effect;
     const flatParameterDescriptions = useMemo(() => {
       return parameterDescriptions.reduce((acc, description) => {
-        if (description.type === 'array') {
+        if (description.type === 'color') {
+          // color parameters are rendered separately via CompactColorPicker
+          acc.push(description);
+        } else if (description.type === 'array') {
           // split arrays of controls into a separate controls for each component
           if (Array.isArray(description.defaultValue)) {
             description.defaultValue.forEach((_, index) => {
@@ -309,19 +342,47 @@ export default function EffectConfiguratorFactory(
 
     const controls = useMemo(() => {
       return flatParameterDescriptions.map(desc => {
+        if (desc.type === 'color') {
+          return {
+            isColor: true as const,
+            label: desc.label || desc.name,
+            paramName: desc.name,
+            color: parameters[desc.name] || desc.defaultValue || [255, 255, 255],
+            onSetColor: (v: [number, number, number]) =>
+              updateEffectConfig(null, id, {parameters: {[desc.name]: v}})
+          };
+        }
+
+        if (desc.type === 'checkbox') {
+          return {
+            isCheckbox: true as const,
+            label: typeof desc.label === 'string' ? desc.label : desc.name,
+            paramName: desc.name,
+            checked: Boolean(parameters[desc.name]),
+            onChange: () =>
+              updateEffectConfig(null, id, {parameters: {[desc.name]: !parameters[desc.name]}})
+          };
+        }
+
         const paramName = desc.name;
 
-        const uniform = uniforms[desc.name];
-        if ((!uniform && uniform !== 0) || uniform.private) {
+        const rawUniform = uniforms[desc.name];
+        if ((!rawUniform && rawUniform !== 0) || rawUniform.private) {
           return null;
         }
+
+        // luma.gl 9 wraps array propTypes as {value: [...]}
+        const uniform =
+          rawUniform && typeof rawUniform === 'object' && Array.isArray(rawUniform.value)
+            ? rawUniform.value
+            : rawUniform;
 
         const prevValue = parameters[paramName];
 
         const label = desc.label === false ? false : desc.label || desc.name;
 
         // the uniform is [number, number] array
-        if (uniform.length === 2) {
+        if (Array.isArray(uniform) && uniform.length === 2) {
           return {
             label,
             value1: prevValue[desc.index || 0] || 0,
@@ -351,14 +412,16 @@ export default function EffectConfiguratorFactory(
         }
         // the uniform description is {value: 0, min: 0, max: 1, ...}
         else if (isNumber(uniform.value)) {
+          const rangeMin = desc.min ?? uniform.min ?? uniform.softMin ?? 0;
+          const rangeMax = desc.max ?? uniform.max ?? uniform.softMax ?? 1;
+          const rangeSpan = rangeMax - rangeMin;
+          const step = rangeSpan > 10 ? 1 : 0.001;
           return {
             label,
             value1: prevValue || 0,
-            range: [
-              desc.min ?? uniform.min ?? uniform.softMin ?? 0,
-              desc.max ?? uniform.max ?? uniform.softMax ?? 1
-            ],
-            value0: desc.min ?? uniform.min ?? uniform.softMin ?? 0,
+            range: [rangeMin, rangeMax],
+            value0: rangeMin,
+            step,
             onChange: (newValue: number[], event) => {
               updateEffectConfig(event, id, {parameters: {[paramName]: newValue[1]}});
             }
@@ -372,23 +435,102 @@ export default function EffectConfiguratorFactory(
 
     return (
       <StyledEffectConfigurator key={effect.id}>
-        {flatParameterDescriptions.map((desc, parameterIndex) => {
-          const control = controls[parameterIndex];
-          if (!control) {
-            return null;
-          }
+        {(() => {
+          const elements: React.ReactNode[] = [];
+          let i = 0;
+          while (i < flatParameterDescriptions.length) {
+            const control = controls[i];
+            if (!control) {
+              i++;
+              continue;
+            }
 
-          return (
-            <RegularOuterWrapper key={`${effect.id}-${parameterIndex}`}>
-              {control.label ? (
-                <RegularSectionTitleWrapper>{control.label}</RegularSectionTitleWrapper>
-              ) : null}
-              <RegularSliderWrapper>
-                <RangeSlider key={parameterIndex} {...COMMON_SLIDER_PROPS} {...control} />
-              </RegularSliderWrapper>
-            </RegularOuterWrapper>
-          );
-        })}
+            if ('isColor' in control) {
+              const nextControl = i + 1 < controls.length ? controls[i + 1] : null;
+              if (nextControl && 'isCheckbox' in nextControl) {
+                elements.push(
+                  <StyledColorCheckboxRow key={`${effect.id}-${i}`}>
+                    <CompactColorPicker
+                      label={typeof control.label === 'string' ? control.label : 'Color'}
+                      color={control.color}
+                      onSetColor={
+                        control.onSetColor ??
+                        (() => {
+                          /* noop */
+                        })
+                      }
+                      Icon={ArrowDownSmall}
+                    />
+                    <StyledCheckboxWrapper
+                      onClick={() => (nextControl as {onChange: () => void}).onChange()}
+                    >
+                      <StyledCheckbox
+                        type="checkbox"
+                        checked={nextControl.checked}
+                        onChange={() => (nextControl as {onChange: () => void}).onChange()}
+                        onClick={e => e.stopPropagation()}
+                      />
+                      <StyledCheckboxLabel>{nextControl.label}</StyledCheckboxLabel>
+                    </StyledCheckboxWrapper>
+                  </StyledColorCheckboxRow>
+                );
+                i += 2;
+                continue;
+              }
+
+              elements.push(
+                <RegularOuterWrapper key={`${effect.id}-${i}`}>
+                  <CompactColorPicker
+                    label={typeof control.label === 'string' ? control.label : 'Color'}
+                    color={control.color}
+                    onSetColor={
+                      control.onSetColor ??
+                      (() => {
+                        /* noop */
+                      })
+                    }
+                    Icon={ArrowDownSmall}
+                  />
+                </RegularOuterWrapper>
+              );
+              i++;
+              continue;
+            }
+
+            if ('isCheckbox' in control) {
+              elements.push(
+                <RegularOuterWrapper key={`${effect.id}-${i}`}>
+                  <StyledCheckboxWrapper
+                    onClick={() => (control as {onChange: () => void}).onChange()}
+                  >
+                    <StyledCheckbox
+                      type="checkbox"
+                      checked={control.checked}
+                      onChange={() => (control as {onChange: () => void}).onChange()}
+                      onClick={e => e.stopPropagation()}
+                    />
+                    <StyledCheckboxLabel>{control.label}</StyledCheckboxLabel>
+                  </StyledCheckboxWrapper>
+                </RegularOuterWrapper>
+              );
+              i++;
+              continue;
+            }
+
+            elements.push(
+              <RegularOuterWrapper key={`${effect.id}-${i}`}>
+                {control.label ? (
+                  <RegularSectionTitleWrapper>{control.label}</RegularSectionTitleWrapper>
+                ) : null}
+                <RegularSliderWrapper>
+                  <RangeSlider key={i} {...COMMON_SLIDER_PROPS} {...control} />
+                </RegularSliderWrapper>
+              </RegularOuterWrapper>
+            );
+            i++;
+          }
+          return elements;
+        })()}
       </StyledEffectConfigurator>
     );
   };

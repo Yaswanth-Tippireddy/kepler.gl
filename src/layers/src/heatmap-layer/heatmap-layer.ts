@@ -2,12 +2,22 @@
 // Copyright contributors to the kepler.gl project
 
 import {createSelector} from 'reselect';
-import {CHANNEL_SCALES, SCALE_FUNC, ALL_FIELD_TYPES, ColorRange} from '@kepler.gl/constants';
+import {CHANNEL_SCALES, ALL_FIELD_TYPES} from '@kepler.gl/constants';
 import MapboxGLLayer, {MapboxLayerGLConfig} from '../mapboxgl-layer';
 import HeatmapLayerIcon from './heatmap-layer-icon';
 import {LayerBaseConfigPartial, LayerWeightConfig, VisualChannels} from '../base-layer';
-import {VisConfigColorRange, VisConfigNumber, HexColor, Merge, LayerColumn} from '@kepler.gl/types';
+import {
+  ColorRange,
+  VisConfigColorRange,
+  VisConfigNumber,
+  HexColor,
+  Merge,
+  LayerColumn
+} from '@kepler.gl/types';
 import {hexToRgb, DataContainerInterface} from '@kepler.gl/utils';
+import {KeplerTable} from '@kepler.gl/table';
+
+import {getGeoArrowPointLayerProps, FindDefaultLayerPropsReturnValue} from '../layer-utils';
 
 export type HeatmapLayerVisConfigSettings = {
   opacity: VisConfigNumber;
@@ -102,20 +112,14 @@ const DEFAULT_COLUMN_MODE = COLUMN_MODE_POINTS;
  * ]
  */
 const heatmapDensity = (colorRange: ColorRange): (string | number)[] => {
-  const scaleFunction = SCALE_FUNC.quantize;
-
   const colors: HexColor[] = ['#000000', ...colorRange.colors];
 
-  const scale = scaleFunction<HexColor>().domain([0, 1]).range(colors);
+  const colorDensity: (string | number)[] = [];
+  colors.forEach((color, index) => {
+    colorDensity.push(index / colors.length);
+    colorDensity.push(`rgb(${hexToRgb(color).join(',')})`);
+  });
 
-  const colorDensity = scale.range().reduce((bands: (string | number)[], level) => {
-    const invert = scale.invertExtent(level);
-    return [
-      ...bands,
-      invert[0], // first value in the range
-      `rgb(${hexToRgb(level).join(',')})` // color
-    ];
-  }, []);
   colorDensity[1] = 'rgba(0,0,0,0)';
   return colorDensity;
 };
@@ -153,6 +157,15 @@ class HeatmapLayer extends MapboxGLLayer {
       return this.hasColumnValue(columns.geoarrow);
     }
     return super.hasAllColumns();
+  }
+
+  static findDefaultLayerProps(dataset: KeplerTable): FindDefaultLayerPropsReturnValue {
+    const altProps = getGeoArrowPointLayerProps(dataset);
+
+    return {
+      props: [],
+      altProps
+    };
   }
 
   get visualChannels(): VisualChannels {
@@ -207,7 +220,9 @@ class HeatmapLayer extends MapboxGLLayer {
     return layerConfig;
   }
 
-  updateLayerMeta(dataContainer) {
+  updateLayerMeta(dataset: KeplerTable) {
+    const {dataContainer} = dataset;
+
     const getPosition = this.getPositionAccessor(dataContainer);
     const bounds = this.getPointsBounds(dataContainer, getPosition);
     this.updateMeta({bounds});

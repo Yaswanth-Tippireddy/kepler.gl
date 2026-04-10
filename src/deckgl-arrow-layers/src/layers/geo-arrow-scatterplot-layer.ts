@@ -11,13 +11,15 @@ import {
   DefaultProps,
   GetPickingInfoParams,
   Layer,
-  LayersList,
-  assert
-} from '@deck.gl/core/typed';
-import {ScatterplotLayer} from '@deck.gl/layers/typed';
-import type {ScatterplotLayerProps} from '@deck.gl/layers/typed';
+  LayersList
+} from '@deck.gl/core';
+import {ScatterplotLayer} from '@deck.gl/layers';
+import type {ScatterplotLayerProps} from '@deck.gl/layers';
 import * as arrow from 'apache-arrow';
 import * as ga from '@geoarrow/geoarrow-js';
+
+import {GEOARROW_EXTENSIONS} from '@kepler.gl/constants';
+
 import {
   assignAccessor,
   extractAccessorsFromProps,
@@ -26,7 +28,7 @@ import {
 } from '../utils/utils';
 import {GeoArrowExtraPickingProps, computeChunkOffsets, getPickingInfo} from '../utils/picking';
 import {ColorAccessor, FloatAccessor, GeoArrowPickingInfo, ExtensionProps} from '../types';
-import {EXTENSION_NAME} from '../constants';
+import {assert} from '../utils/utils';
 import {validateAccessors} from '../utils/validate';
 
 /** All properties supported by GeoArrowScatterplotLayer */
@@ -121,12 +123,12 @@ export class GeoArrowScatterplotLayer<ExtraProps extends object = object> extend
 
       throw new Error('getPosition should pass in an arrow Vector of Point or MultiPoint type');
     } else {
-      const pointVector = getGeometryVector(table, EXTENSION_NAME.POINT);
+      const pointVector = getGeometryVector(table, GEOARROW_EXTENSIONS.POINT);
       if (pointVector !== null) {
         return this._renderLayersPoint(pointVector);
       }
 
-      const multiPointVector = getGeometryVector(table, EXTENSION_NAME.MULTIPOINT);
+      const multiPointVector = getGeometryVector(table, GEOARROW_EXTENSIONS.MULTIPOINT);
       if (multiPointVector !== null) {
         return this._renderLayersMultiPoint(multiPointVector);
       }

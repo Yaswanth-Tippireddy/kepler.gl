@@ -11,11 +11,15 @@ import {
   EXPORT_IMG_RATIOS,
   EXPORT_MAP_FORMATS,
   RESOLUTIONS,
-  MAP_CONTROLS,
-  ExportImage
+  MAP_CONTROLS
 } from '@kepler.gl/constants';
 import {LOCALE_CODES} from '@kepler.gl/localization';
-import {createNotification, errorNotification, calculateExportImageSize} from '@kepler.gl/utils';
+import {
+  createNotification,
+  errorNotification,
+  calculateExportImageSize,
+  getApplicationConfig
+} from '@kepler.gl/utils';
 import {payload_, apply_, compose_} from './composer-helpers';
 
 import {
@@ -29,6 +33,7 @@ import {
   ExportHtml,
   ExportJson,
   ExportMap,
+  ExportImage,
   MapControlItem,
   MapControls,
   UiState
@@ -44,7 +49,7 @@ export const DEFAULT_MODAL = ADD_DATA_ID;
  * @public
  * @example
  *
- * import keplerGlReducer, {uiStateUpdaters} from 'kepler.gl/reducers';
+ * import keplerGlReducer, {uiStateUpdaters} from '@kepler.gl/reducers';
  * // Root Reducer
  * const reducers = combineReducers({
  *  keplerGl: keplerGlReducer,
@@ -128,7 +133,7 @@ export const DEFAULT_MAP_CONTROLS: MapControls = (
  * @property imageDataUri Default: `''`,
  * @property exporting Default: `false`
  * @property error Default: `false`
- * @property escapeXhtmlForWebpack Default: `true`
+ * @property escapeXhtmlForWebpack Default: from application config (auto-detected: `true` for webpack)
  * @public
  */
 export const DEFAULT_EXPORT_IMAGE: ExportImage = {
@@ -153,8 +158,8 @@ export const DEFAULT_EXPORT_IMAGE: ExportImage = {
   // processing: used as loading indicator when export image is being produced
   processing: false,
   error: false,
-  // whether to apply fix for uglify error in dom-to-image (should be true for webpack builds)
-  escapeXhtmlForWebpack: true
+  // whether to apply fix for uglify error in dom-to-image (from application config, auto-detects build tool)
+  escapeXhtmlForWebpack: getApplicationConfig().escapeXhtmlForWebpack
 };
 
 export const DEFAULT_LOAD_FILES = {
@@ -373,9 +378,20 @@ export const toggleMapControlUpdater = (
   // The effect panel and ai assistant panel can not be active at the same time
   // so we need to deactivate the other panel when one is activated
   const panelToDeactivate =
-    panelId === MAP_CONTROLS.effect ? MAP_CONTROLS.aiAssistant :
-    panelId === MAP_CONTROLS.aiAssistant ? MAP_CONTROLS.effect :
-    null;
+    panelId === MAP_CONTROLS.effect
+      ? MAP_CONTROLS.aiAssistant
+      : panelId === MAP_CONTROLS.aiAssistant
+      ? MAP_CONTROLS.effect
+      : null;
+
+  // To to toggle the mapDraw and mapLocal dropdowns
+  // We have to deactivate the other active dropdown
+  const dropdownToDeactivate =
+    panelId === MAP_CONTROLS.mapDraw
+      ? MAP_CONTROLS.mapLocale
+      : panelId === MAP_CONTROLS.mapLocale
+      ? MAP_CONTROLS.mapDraw
+      : null;
 
   // If we need to deactivate a competing panel and it's currently active
   if (panelToDeactivate && state.mapControls[panelToDeactivate]?.active) {
@@ -385,6 +401,20 @@ export const toggleMapControlUpdater = (
         ...updatedState.mapControls,
         [panelToDeactivate]: {
           ...updatedState.mapControls[panelToDeactivate],
+          active: false
+        }
+      }
+    };
+  }
+
+  // If we need to deactivate a competing dropdown and it's currently active
+  if (dropdownToDeactivate && state.mapControls[dropdownToDeactivate]?.active) {
+    updatedState = {
+      ...state,
+      mapControls: {
+        ...updatedState.mapControls,
+        [dropdownToDeactivate]: {
+          ...updatedState.mapControls[dropdownToDeactivate],
           active: false
         }
       }
@@ -429,6 +459,33 @@ export const setMapControlVisibilityUpdater = (
         ...state.mapControls[panelId],
         show: Boolean(show)
       }
+    }
+  };
+};
+
+/**
+ * Toggle map control settings
+ * @memberof uiStateUpdaters
+ * @param state `uiState`
+ * @param action action
+ * @param action.payload map control panel id, one of the keys of: [`DEFAULT_MAP_CONTROLS`](#default_map_controls)
+ * @returns nextState
+ * @public
+ */
+export const setMapControlSettingsUpdater = (
+  state: UiState,
+  {payload: {panelId, settings}}: UIStateActions.setMapControlSettingsUpdaterAction
+): UiState => {
+  const mapControl = state.mapControls?.[panelId];
+  if (!mapControl) {
+    return state;
+  }
+
+  return {
+    ...state,
+    mapControls: {
+      ...state.mapControls,
+      [panelId]: {...mapControl, settings: {...mapControl.settings, ...settings}}
     }
   };
 };
@@ -489,14 +546,19 @@ export const setExportImageSettingUpdater = (
 export const setExportImageDataUriUpdater = (
   state: UiState,
   {payload: dataUri}: UIStateActions.SetExportImageDataUriUpdaterAction
-): UiState => ({
-  ...state,
-  exportImage: {
-    ...state.exportImage,
-    processing: false,
-    imageDataUri: dataUri
+): UiState => {
+  if (dataUri === state.exportImage.imageDataUri) {
+    return state;
   }
-});
+  return {
+    ...state,
+    exportImage: {
+      ...state.exportImage,
+      processing: false,
+      imageDataUri: dataUri
+    }
+  };
+};
 
 /**
  * @memberof uiStateUpdaters

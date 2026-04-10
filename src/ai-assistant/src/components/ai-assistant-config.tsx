@@ -2,41 +2,25 @@
 // Copyright contributors to the kepler.gl project
 
 import React, {useState} from 'react';
-import styled, {withTheme} from 'styled-components';
-import {injectIntl, WrappedComponentProps} from 'react-intl';
+import styled from 'styled-components';
+import {useSelector, useDispatch} from 'react-redux';
 import {
   Input,
   PanelLabelWrapper,
   ItemSelector,
   RangeSliderFactory,
   Button,
-  LoadingSpinner
+  LoadingSpinner,
+  appInjector,
+  Checkbox
 } from '@kepler.gl/components';
-import {AiAssistantConfig} from '../index';
+import {State} from '../index';
 import ApiKey from '../icons/api-key';
-import {testApiKey} from 'react-ai-assist';
-
-const PROVIDER_MODELS = {
-  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo-0125', 'gpt-3.5-turbo'],
-  google: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro'],
-  ollama: [
-    'qwen2.5-coder',
-    'llama3.2',
-    'llama3.1',
-    'llama3.1:70b',
-    'qwen2',
-    'llava',
-    'mistral',
-    'gemma2',
-    'phi3.5'
-  ]
-};
-
-export type AiAssistantConfigProps = {
-  theme: any;
-  aiAssistantConfig: AiAssistantConfig;
-  updateAiAssistantConfig: (aiAssistantConfig: AiAssistantConfig) => void;
-} & WrappedComponentProps;
+import {PROVIDER_MODELS, PROVIDER_DEFAULT_BASE_URLS} from '../config/models';
+import {useLocalStorage} from 'usehooks-ts';
+import {GetAssistantModelByProvider} from '@openassistant/core';
+import {updateAiAssistantConfig} from '../actions';
+import {FormattedMessage, useIntl} from 'react-intl';
 
 const SectionTitle = styled.div`
   font-size: ${props => props.theme.inputFontSize};
@@ -73,6 +57,15 @@ const StyledAiAssistantConfig = styled.div`
       caret-color: unset;
     }
   }
+`;
+
+// Ollama model input wrapper: checkbox + 'Input Model Name:' + input
+// all children element have width based on the content
+const OllamaModelInputWrapper = styled.div`
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  align-items: center;
 `;
 
 const StyledWrapper = styled.div`
@@ -133,127 +126,188 @@ const StyleErrorMessage = styled.div`
   color: ${props => props.theme.errorTextColor};
 `;
 
-AiAssistantConfigFactory.deps = [RangeSliderFactory];
+const RangeSlider = appInjector.get(RangeSliderFactory);
 
-function AiAssistantConfigFactory(RangeSlider: ReturnType<typeof RangeSliderFactory>) {
-  const AiAssistantConfig: React.FC<AiAssistantConfigProps> = ({
-    intl,
-    aiAssistantConfig,
-    updateAiAssistantConfig
-  }) => {
-    const [provider, setProvider] = useState(aiAssistantConfig.provider || 'openai');
-    const [model, setModel] = useState(aiAssistantConfig.model || PROVIDER_MODELS[provider][0]);
-    const [apiKey, setApiKey] = useState(aiAssistantConfig.apiKey || '');
-    const [temperature, setTemperature] = useState(aiAssistantConfig.temperature || 0.8);
-    const [topP, setTopP] = useState(aiAssistantConfig.topP || 0.8);
-    const [baseUrl, setBaseUrl] = useState(aiAssistantConfig.baseUrl || 'http://localhost:11434');
-    const [connectionError, setConnectionError] = useState(false);
-    const [errorMessage, setErrorMessage] = useState('');
-    const [isRunning, setIsRunning] = useState(false);
+export function AiAssistantConfig() {
+  const dispatch = useDispatch();
+  const aiAssistantConfig = useSelector((state: State) => state.demo.aiAssistant.config);
+  const intl = useIntl();
 
-    const onAiProviderSelect = (value: string | number | boolean | object | null) => {
-      if (typeof value === 'string') {
-        setProvider(value);
-        setModel(PROVIDER_MODELS[value][0]);
-        setConnectionError(false);
-        setErrorMessage('');
-      }
-    };
+  const [provider, setProvider] = useLocalStorage(
+    'ai-assistant-provider',
+    aiAssistantConfig.provider || 'openai'
+  );
+  const [model, setModel] = useLocalStorage(
+    'ai-assistant-model',
+    aiAssistantConfig.model || PROVIDER_MODELS[provider][0]
+  );
+  const [apiKey, setApiKey] = useLocalStorage(
+    'ai-assistant-api-key',
+    aiAssistantConfig.apiKey || ''
+  );
+  const [temperature, setTemperature] = useLocalStorage(
+    'ai-assistant-temperature',
+    aiAssistantConfig.temperature || 0.0
+  );
+  const [topP, setTopP] = useLocalStorage('ai-assistant-top-p', aiAssistantConfig.topP || 1.0);
+  const [baseUrl, setBaseUrl] = useLocalStorage(
+    'ai-assistant-base-url',
+    aiAssistantConfig.baseUrl || PROVIDER_DEFAULT_BASE_URLS[provider]
+  );
+  const [mapboxToken, setMapboxToken] = useLocalStorage(
+    'ai-assistant-mapbox-token',
+    aiAssistantConfig.mapboxToken || ''
+  );
+  const [ollamaModelInputChecked, setOllamaModelInputChecked] = useState(false);
+  const [ollamaModelInputValue, setOllamaModelInputValue] = useState('');
+  const [connectionError, setConnectionError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isRunning, setIsRunning] = useState(false);
 
-    const onLLMModelSelect = (value: string | number | boolean | object | null) => {
-      if (typeof value === 'string') {
-        setModel(value);
-      }
-    };
-
-    const onApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setApiKey(e.target.value);
-      // reset previous key error if any
+  const onAiProviderSelect = (value: string | number | boolean | object | null) => {
+    if (typeof value === 'string') {
+      setProvider(value);
+      setModel(PROVIDER_MODELS[value][0]);
+      setBaseUrl(PROVIDER_DEFAULT_BASE_URLS[value]);
       setConnectionError(false);
       setErrorMessage('');
-    };
+    }
+  };
 
-    const onTemperatureChange = (value: number[]) => {
-      setTemperature(value[1]);
-    };
+  const onLLMModelSelect = (value: string | number | boolean | object | null) => {
+    if (typeof value === 'string') {
+      setModel(value);
+    }
+  };
 
-    const onTopPChange = (value: number[]) => {
-      setTopP(value[1]);
-    };
+  const onApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setApiKey(e.target.value);
+    // reset previous key error if any
+    setConnectionError(false);
+    setErrorMessage('');
+  };
 
-    const onBaseUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setBaseUrl(e.target.value);
-      setConnectionError(false);
-      setErrorMessage('');
-    };
+  const onTemperatureChange = (value: number[]) => {
+    setTemperature(value[1]);
+  };
 
-    const onStartChat = async () => {
-      setIsRunning(true);
-      const {success, service} = await testApiKey({
-        modelProvider: provider,
-        modelName: model,
-        apiKey: apiKey,
-        baseUrl: baseUrl
+  const onTopPChange = (value: number[]) => {
+    setTopP(value[1]);
+  };
+
+  const onBaseUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setBaseUrl(e.target.value);
+    setConnectionError(false);
+    setErrorMessage('');
+  };
+
+  const onMapboxTokenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMapboxToken(e.target.value);
+  };
+
+  const onOllamaModelInputChecked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setOllamaModelInputChecked(e.target.checked);
+    if (!e.target.checked) {
+      // use model from selector
+      setModel('');
+    }
+  };
+
+  const onOllamaModelInputValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setOllamaModelInputValue(e.target.value);
+    setModel(e.target.value);
+  };
+
+  const onStartChat = async () => {
+    setIsRunning(true);
+    try {
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Connection timeout after 15 seconds')), 15000);
       });
+
+      const AssistantModel = await GetAssistantModelByProvider({
+        provider: provider
+      });
+
+      if (!AssistantModel || !AssistantModel.configure || !AssistantModel.testConnection) {
+        throw new Error('Failed to initialize AI model');
+      }
+
+      // configure model
+      AssistantModel.configure({
+        model: model,
+        baseURL: baseUrl || PROVIDER_DEFAULT_BASE_URLS[provider],
+        apiKey: apiKey,
+        temperature: Number(temperature),
+        topP: Number(topP)
+      });
+
+      const success = (await Promise.race([
+        AssistantModel.testConnection(apiKey, model),
+        timeoutPromise
+      ])) as boolean;
+
       const errorMessage = !success
-        ? service === 'ollama'
-          ? 'Connection failed: maybe invalid Ollama Base URL'
-          : 'Connection failed: maybe invalid API Key'
+        ? provider === 'ollama'
+          ? 'Connection failed: maybe invalid Base URL'
+          : 'Connection failed: maybe invalid API Key or Base URL'
         : '';
       setConnectionError(!success);
       setErrorMessage(errorMessage);
-      updateAiAssistantConfig({
-        provider: provider,
-        model: model,
-        apiKey: apiKey,
-        baseUrl: baseUrl,
-        isReady: success,
-        temperature: temperature,
-        topP: topP
-      });
+      dispatch(
+        updateAiAssistantConfig({
+          provider: provider,
+          model: model,
+          apiKey: apiKey,
+          baseUrl: baseUrl || PROVIDER_DEFAULT_BASE_URLS[provider],
+          isReady: success,
+          temperature: temperature,
+          topP: topP,
+          mapboxToken: mapboxToken
+        })
+      );
+    } catch (error) {
+      setConnectionError(true);
+      setErrorMessage(error instanceof Error ? error.message : 'Connection failed');
+    } finally {
       setIsRunning(false);
-    };
+    }
+  };
 
-    return (
-      <StyledAiAssistantConfig className="ai-assistant-config__type">
-        <PanelLabelWrapper>
-          <SectionTitle>
-            {intl.formatMessage({
-              id: 'aiAssistantManager.aiProvider.title',
-              defaultMessage: 'Select AI Provider'
-            })}
-          </SectionTitle>
-        </PanelLabelWrapper>
-        <StyledWrapper>
-          <StyledItemSelector
-            selectedItems={provider}
-            options={Object.keys(PROVIDER_MODELS)}
-            multiSelect={false}
-            disabled={false}
-            placeholder="aiAssistantManager.aiProvider"
-            onChange={onAiProviderSelect}
-            filterOption="name"
-            getOptionValue={op => op}
-            displayOption={op => op}
-            searchable={false}
-            showArrow={true}
-          />
-        </StyledWrapper>
-        <PanelLabelWrapper>
-          <SectionTitle>
-            {intl.formatMessage({
-              id: 'aiAssistantManager.llmModel.title',
-              defaultMessage: 'Select LLM Model'
-            })}
-          </SectionTitle>
-        </PanelLabelWrapper>
+  return (
+    <StyledAiAssistantConfig className="ai-assistant-config__type">
+      <PanelLabelWrapper>
+        <SectionTitle>
+          <FormattedMessage id="aiAssistantManager.aiProvider" />
+        </SectionTitle>
+      </PanelLabelWrapper>
+      <StyledWrapper>
+        <StyledItemSelector
+          selectedItems={provider}
+          options={Object.keys(PROVIDER_MODELS)}
+          multiSelect={false}
+          disabled={false}
+          onChange={onAiProviderSelect}
+          filterOption="name"
+          getOptionValue={op => op}
+          displayOption={op => op}
+          searchable={false}
+          showArrow={true}
+        />
+      </StyledWrapper>
+      <PanelLabelWrapper>
+        <SectionTitle>
+          <FormattedMessage id="aiAssistantManager.llmModel.title" />
+        </SectionTitle>
+      </PanelLabelWrapper>
+      {((provider === 'ollama' && !ollamaModelInputChecked) || provider !== 'ollama') && (
         <StyledWrapper>
           <StyledItemSelector
             selectedItems={model}
             options={PROVIDER_MODELS[provider]}
             multiSelect={false}
-            disabled={false}
-            placeholder="aiAssistantManager.llmModel.placeholder"
+            disabled={provider === 'ollama' ? ollamaModelInputChecked : false}
+            placeholder="Select LLM Model"
             onChange={onLLMModelSelect}
             filterOption="name"
             getOptionValue={op => op}
@@ -262,112 +316,119 @@ function AiAssistantConfigFactory(RangeSlider: ReturnType<typeof RangeSliderFact
             showArrow={true}
           />
         </StyledWrapper>
-        {provider !== 'ollama' ? (
-          <>
-            <PanelLabelWrapper>
-              <SectionTitle>
-                {intl.formatMessage({
-                  id: 'aiAssistantManager.apiKey.title',
-                  defaultMessage: 'Enter API Key'
-                })}
-              </SectionTitle>
-            </PanelLabelWrapper>
-            <div className="api-key-input">
-              <div className="api-key-input__icon">
-                <ApiKey height="20px" />
-              </div>
-              <Input
-                type="text"
-                onChange={onApiKeyChange}
-                placeholder={intl.formatMessage({
-                  id: 'aiAssistantManager.apiKey.placeholder',
-                  defaultMessage: 'Enter your API Key'
-                })}
-                value={apiKey}
-              />
-            </div>
-          </>
-        ) : (
-          <>
-            <PanelLabelWrapper>
-              <SectionTitle>
-                {intl.formatMessage({
-                  id: 'aiAssistantManager.baseUrl.title',
-                  defaultMessage: 'Ollama Base URL'
-                })}
-              </SectionTitle>
-            </PanelLabelWrapper>
-            <div className="api-key-input">
-              <div className="api-key-input__icon">
-                <ApiKey height="20px" />
-              </div>
-              <Input
-                type="text"
-                onChange={onBaseUrlChange}
-                placeholder={intl.formatMessage({
-                  id: 'aiAssistantManager.baseUrl.placeholder',
-                  defaultMessage: 'Enter Ollama Base URL'
-                })}
-                value={baseUrl}
-              />
-            </div>
-          </>
-        )}
-        {connectionError && (
-          <StyleErrorMessage className="error-message">{errorMessage}</StyleErrorMessage>
-        )}
-        <PanelLabelWrapper>
-          <SectionTitle>
-            {intl.formatMessage({
-              id: 'aiAssistantManager.temperature.title',
-              defaultMessage: 'Temperature'
-            })}
-          </SectionTitle>
-        </PanelLabelWrapper>
-        <StyleSliderWrapper>
-          <RangeSlider
-            showInput={true}
-            isRanged={false}
-            value0={0}
-            value1={temperature}
-            onChange={onTemperatureChange}
-            range={[0, 2]}
-            step={0.1}
+      )}
+      {provider === 'ollama' && (
+        <OllamaModelInputWrapper>
+          <div style={{width: '250px'}}>
+            <Checkbox
+              id="ollama-model-input"
+              label="Input Model Name"
+              onChange={onOllamaModelInputChecked}
+              checked={ollamaModelInputChecked}
+            />
+          </div>
+          <Input
+            type="text"
+            onChange={onOllamaModelInputValueChange}
+            placeholder="Enter Model Name"
+            value={ollamaModelInputValue}
+            disabled={!ollamaModelInputChecked}
           />
-        </StyleSliderWrapper>
+        </OllamaModelInputWrapper>
+      )}
+      {provider !== 'ollama' && (
+        <>
+          <PanelLabelWrapper>
+            <SectionTitle>
+              <FormattedMessage id="aiAssistantManager.apiKey.title" />
+            </SectionTitle>
+          </PanelLabelWrapper>
+          <div className="api-key-input">
+            <div className="api-key-input__icon">
+              <ApiKey height="20px" />
+            </div>
+            <Input
+              type="text"
+              onChange={onApiKeyChange}
+              placeholder={intl.formatMessage({id: 'aiAssistantManager.apiKey.placeholder'})}
+              value={apiKey}
+            />
+          </div>
+        </>
+      )}
+      <PanelLabelWrapper>
+        <SectionTitle>
+          <FormattedMessage id="aiAssistantManager.baseUrl.title" />
+        </SectionTitle>
+      </PanelLabelWrapper>
+      <div className="api-key-input">
+        <div className="api-key-input__icon">
+          <ApiKey height="20px" />
+        </div>
+        <Input
+          type="text"
+          onChange={onBaseUrlChange}
+          placeholder={PROVIDER_DEFAULT_BASE_URLS[provider]}
+          value={baseUrl}
+        />
+      </div>
+      {connectionError && (
+        <StyleErrorMessage className="error-message">{errorMessage}</StyleErrorMessage>
+      )}
+      <PanelLabelWrapper>
+        <SectionTitle>
+          <FormattedMessage id="aiAssistantManager.temperature.title" />
+        </SectionTitle>
+      </PanelLabelWrapper>
+      <StyleSliderWrapper>
+        <RangeSlider
+          showInput={true}
+          isRanged={false}
+          value0={0}
+          value1={temperature}
+          onChange={onTemperatureChange}
+          range={[0, 2]}
+          step={0.1}
+        />
+      </StyleSliderWrapper>
+      <PanelLabelWrapper>
+        <SectionTitle>
+          <FormattedMessage id="aiAssistantManager.topP.title" />
+        </SectionTitle>
+      </PanelLabelWrapper>
+      <StyleSliderWrapper>
+        <RangeSlider
+          showInput={true}
+          isRanged={false}
+          value0={0}
+          value1={topP}
+          onChange={onTopPChange}
+          range={[0, 1]}
+          step={0.1}
+        />
+      </StyleSliderWrapper>
+      <>
         <PanelLabelWrapper>
-          <SectionTitle>
-            {intl.formatMessage({
-              id: 'aiAssistantManager.topP.title',
-              defaultMessage: 'Top P'
-            })}
-          </SectionTitle>
+          <SectionTitle>Mapbox Token (optional for route/isochrone)</SectionTitle>
         </PanelLabelWrapper>
-        <StyleSliderWrapper>
-          <RangeSlider
-            showInput={true}
-            isRanged={false}
-            value0={0}
-            value1={topP}
-            onChange={onTopPChange}
-            range={[0, 1]}
-            step={0.1}
+        <div className="api-key-input">
+          <div className="api-key-input__icon">
+            <ApiKey height="20px" />
+          </div>
+          <Input
+            type="text"
+            onChange={onMapboxTokenChange}
+            placeholder="Enter your Mapbox Token"
+            value={mapboxToken}
           />
-        </StyleSliderWrapper>
-        <StyledButton>
-          <Button onClick={onStartChat} width={'100%'}>
-            {isRunning && <LoadingSpinner size={12} />}
-            {intl.formatMessage({
-              id: 'aiAssistantManager.startChat',
-              defaultMessage: "Let's Chat"
-            })}
-          </Button>
-        </StyledButton>
-      </StyledAiAssistantConfig>
-    );
-  };
-
-  return withTheme(injectIntl(AiAssistantConfig));
+        </div>
+      </>
+      <StyledButton>
+        <Button onClick={onStartChat} width={'100%'}>
+          {isRunning && <LoadingSpinner size={12} />}
+          <FormattedMessage id="aiAssistantManager.startChat" />
+        </Button>
+      </StyledButton>
+    </StyledAiAssistantConfig>
+  );
 }
-
-export default AiAssistantConfigFactory;

@@ -1,13 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright contributors to the kepler.gl project
 
-import {Analyzer, DATA_TYPES} from 'type-analyzer';
-
-import {Field} from '@kepler.gl/types';
-
 import {parseGeoJsonRawFeature, getGeojsonFeatureTypes} from '../geojson-layer/geojson-utils';
 import {DataContainerInterface, getSampleContainerData, timeToUnixMilli} from '@kepler.gl/utils';
-import {notNullorUndefined} from '@kepler.gl/common-utils';
+import {containValidTime, notNullorUndefined} from '@kepler.gl/common-utils';
 import {Feature} from '@turf/helpers';
 import {GeoJsonProperties, Geometry} from 'geojson';
 
@@ -28,26 +24,6 @@ export function coordHasLength4(samples): boolean {
     }
   }
   return hasLength4;
-}
-
-/**
- * Check whether geojson linestring's 4th coordinate is 1) not timestamp 2) unix time stamp 3) real date time
- * @param timestamps array to be tested if its elements are timestamp
- * @returns the type of timestamp: unix/datetime/invalid(not timestamp)
- */
-export function containValidTime(timestamps: string[]): Field | null {
-  const formattedTimeStamps = timestamps.map(ts => ({ts}));
-  const ignoredDataTypes = Object.keys(DATA_TYPES).filter(
-    type => ![DATA_TYPES.TIME, DATA_TYPES.DATETIME].includes(type)
-  );
-
-  // ignore all types but TIME to improve performance
-  const analyzedType = Analyzer.computeColMeta(formattedTimeStamps, [], {ignoredDataTypes})[0];
-
-  if (!analyzedType || analyzedType.category !== 'TIME') {
-    return null;
-  }
-  return analyzedType;
 }
 
 /**
@@ -83,9 +59,11 @@ export function isTripGeoJsonField(dataContainer: DataContainerInterface, field)
     return false;
   }
 
-  // condition 3:the 4th coordinate of the first feature line strings is valid time
-  // @ts-expect-error
-  const tsHolder = features[0].geometry.coordinates.map(coord => coord[3]);
+  const geom = features[0].geometry;
+  if (!geom || geom.type === 'GeometryCollection' || !('coordinates' in geom)) {
+    return false;
+  }
+  const tsHolder = (geom.coordinates as number[][]).map(coord => String(coord[3]));
 
   return Boolean(containValidTime(tsHolder));
 }

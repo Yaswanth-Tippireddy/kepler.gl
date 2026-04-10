@@ -72,6 +72,7 @@ function App() {
 
   useEffect(() => {
     window.addEventListener('resize', resizeDelay);
+    handleResize();
     return () => window.removeEventListener('resize', resizeDelay);
   }, []);
 
@@ -83,6 +84,10 @@ function App() {
           <link
             rel="stylesheet"
             href="http://d1a3f4spazzrp4.cloudfront.net/kepler.gl/uber-fonts/4.0.0/superfine.css"
+          />
+          <link
+            rel="stylesheet"
+            href="http://api.tiles.mapbox.com/mapbox-gl-js/v1.1.1/mapbox-gl.css"
           />
           <link
             rel="stylesheet"

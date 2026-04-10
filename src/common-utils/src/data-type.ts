@@ -2,7 +2,7 @@
 // Copyright contributors to the kepler.gl project
 
 import {Analyzer, DATA_TYPES as AnalyzerDATA_TYPES} from 'type-analyzer';
-import {RowData, Field} from '@kepler.gl/types';
+import {ArrowTableInterface, ApacheVectorInterface, RowData, Field} from '@kepler.gl/types';
 import {ALL_FIELD_TYPES} from '@kepler.gl/constants';
 import {console as globalConsole} from 'global/window';
 import {range} from 'd3-array';
@@ -81,6 +81,54 @@ export function getSampleForTypeAnalyze({
 }
 
 /**
+ * Getting sample data for analyzing field type for Arrow tables.
+ * @param table Arrow table or an array of vectors.
+ * @param fields Field names.
+ * @param sampleCount Number of sample rows to get.
+ * @returns Sample rows.
+ */
+export function getSampleForTypeAnalyzeArrow(
+  table: ArrowTableInterface | ApacheVectorInterface[],
+  fields: string[],
+  sampleCount = 50
+): any[] {
+  const isTable = !Array.isArray(table);
+
+  const numRows = isTable ? table.numRows : table[0].length;
+  const getVector = isTable ? index => table.getChildAt(index) : index => table[index];
+
+  const total = Math.min(sampleCount, numRows);
+  const sample = range(0, total, 1).map(() => ({}));
+
+  if (numRows < 1) {
+    return [];
+  }
+
+  // collect sample data for each field
+  fields.forEach((field, fieldIdx) => {
+    let rowIndex = 0;
+    let sampleIndex = 0;
+
+    while (sampleIndex < total) {
+      if (rowIndex >= numRows) {
+        // if depleted data pool
+        sample[sampleIndex][field] = null;
+        sampleIndex++;
+      } else if (notNullorUndefined(getVector(fieldIdx)?.get(rowIndex))) {
+        const value = getVector(fieldIdx)?.get(rowIndex);
+        sample[sampleIndex][field] = typeof value === 'string' ? value.trim() : value;
+        sampleIndex++;
+        rowIndex++;
+      } else {
+        rowIndex++;
+      }
+    }
+  });
+
+  return sample;
+}
+
+/**
  * Convert type-analyzer output to kepler.gl field types
  *
  * @param aType
@@ -149,7 +197,7 @@ export function analyzerTypeToFieldType(aType: string): string {
  * @public
  * @example
  *
- * import {getFieldsFromData} from 'kepler.gl/common-utils';
+ * import {getFieldsFromData} from '@kepler.gl/common-utils';
  * const data = [{
  *   time: '2016-09-17 00:09:55',
  *   value: '4',

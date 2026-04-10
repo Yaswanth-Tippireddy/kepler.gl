@@ -2,7 +2,16 @@
 // Copyright contributors to the kepler.gl project
 
 import {Field, Millisecond} from './types';
-import type {MapViewState} from '@deck.gl/core/typed';
+type MapViewState = {
+  latitude: number;
+  longitude: number;
+  zoom: number;
+  bearing?: number;
+  pitch?: number;
+  transitionDuration?: number;
+  transitionInterpolator?: object;
+};
+import type {ExportResolutionOption} from '@kepler.gl/constants';
 
 export type MapState = {
   pitch: number;
@@ -260,6 +269,17 @@ export type AnimationConfig = {
   hideControl?: boolean;
 };
 
+export type FilterAnimationConfig = Pick<
+  TimeRangeFilter,
+  | 'dataId'
+  | 'value'
+  | 'animationWindow'
+  | 'speed'
+  | 'syncedWithLayerTimeline'
+  | 'syncTimelineMode'
+  | 'timezone'
+>;
+
 export type Timeline = {
   domain: [number, number] | null;
   value: number | [number, number];
@@ -344,6 +364,8 @@ export type CustomStyleType =
   // boolean for backwards compatability with previous map configs
   | boolean;
 
+export type BaseMapColorModes = 'NONE' | 'DARK' | 'LIGHT';
+
 export type BaseMapStyle = {
   id: string;
   label: string;
@@ -353,13 +375,13 @@ export type BaseMapStyle = {
   layerGroups: LayerGroup[];
   accessToken?: string;
   custom?: CustomStyleType;
-  colorMode?: BASE_MAP_COLOR_MODES;
+  colorMode?: BaseMapColorModes;
   complimentaryStyleId?: string;
 };
 
 export declare type ExportImage = {
-  ratio: 'SCREEN' | 'FOUR_BY_THREE' | 'SIXTEEN_BY_NINE' | 'CUSTOM';
-  resolution: 'ONE_X' | 'TWO_X';
+  ratio: EXPORT_IMG_RATIOS;
+  resolution: ExportResolutionOption;
   legend: boolean;
   mapH: number;
   mapW: number;
@@ -374,6 +396,7 @@ export declare type ExportImage = {
   processing: boolean;
   error: Error | false;
   center: boolean;
+  escapeXhtmlForWebpack?: boolean;
 };
 
 export type ExportData = {
@@ -402,8 +425,20 @@ export type MapControlItem = {
   disableClose?: boolean;
   activeMapIndex?: number;
 };
+
+export type MapLegendControlSettings = {
+  position: {
+    x: number;
+    y: number;
+    anchorX: 'left' | 'right';
+    anchorY: 'top' | 'bottom';
+  };
+  contentHeight: number;
+};
+
 export type MapControlMapLegend = MapControlItem & {
   disableEdit?: boolean;
+  settings?: MapLegendControlSettings;
 };
 export type MapControls = {
   visibleLayers?: MapControlItem;
@@ -459,6 +494,8 @@ export type UiState = {
   filterPanelListView: PanelListView;
   // side panel close button visibility
   isSidePanelCloseButtonVisible: boolean | null;
+  // positive value indicates that something is loading
+  loadingIndicatorValue?: number;
 };
 
 /** Width of viewport */

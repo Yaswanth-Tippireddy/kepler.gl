@@ -49,7 +49,10 @@ export {
   getVisibleDatasets,
   makeGetActionCreators,
   mapFieldsSelector,
-  plotContainerSelector
+  bottomWidgetSelector,
+  plotContainerSelector,
+  modalContainerSelector,
+  geoCoderPanelSelector
 } from './kepler-gl';
 export {default as LayerAnimationControllerFactory} from './layer-animation-controller';
 export {Attribution, default as MapContainerFactory} from './map-container';
@@ -77,7 +80,6 @@ export {LayerBlendingSelector, default as LayerManagerFactory} from './side-pane
 export {default as ColorPalette} from './side-panel/layer-panel/color-palette';
 export {
   ALL_TYPES,
-  ColorPaletteGroup,
   default as ColorRangeSelector,
   PaletteConfig
 } from './side-panel/layer-panel/color-range-selector';
@@ -90,6 +92,7 @@ export {
   default as LayerConfiguratorFactory,
   getLayerConfiguratorProps,
   getLayerDataset,
+  getLayerFields,
   getVisConfiguratorProps
 } from './side-panel/layer-panel/layer-configurator';
 export {default as LayerPanelFactory} from './side-panel/layer-panel/layer-panel';
@@ -101,8 +104,14 @@ export * from './side-panel/layer-panel/channel-by-value-selector';
 export * from './side-panel/layer-panel/color-breaks-panel';
 export * from './side-panel/layer-panel/color-range-selector';
 export * from './side-panel/layer-panel/color-scale-selector';
-export * from './side-panel/layer-panel/custom-palette';
-export {default as CustomPalette} from './side-panel/layer-panel/custom-palette';
+export {
+  AddColorStop,
+  default as CustomPalette,
+  DeleteColorStop,
+  ColorPaletteItem,
+  ColorSwatch,
+  EditableColorRange
+} from './side-panel/layer-panel/custom-palette';
 export {default as CustomPicker} from './side-panel/layer-panel/custom-picker';
 export {default as DatasetLayerGroupFactory} from './side-panel/layer-panel/dataset-layer-group';
 export {default as DatasetLayerSectionFactory} from './side-panel/layer-panel/dataset-layer-section';
@@ -140,7 +149,7 @@ export {default as MapStyleSelectorFactory} from './side-panel/map-style-panel/m
 export {default as CoordinateInfoFactory} from './map/coordinate-info';
 export {default as LayerHoverInfoFactory} from './map/layer-hover-info';
 export {default as LayerSelectorPanelFactory} from './map/layer-selector-panel';
-export {default as LazzyTippy} from './map/lazy-tippy';
+export {default as LazyTippy} from './map/lazy-tippy';
 export {default as LocalePanelFactory} from './map/locale-panel';
 export {default as MapControlFactory} from './map/map-control';
 export {default as MapControlPanelFactory} from './map/map-control-panel';
@@ -178,7 +187,7 @@ export {default as ExportHtmlMapFactory} from './modals/export-map-modal/export-
 export {default as ExportJsonMapFactory} from './modals/export-map-modal/export-json-map';
 export {default as ExportMapModalFactory} from './modals/export-map-modal/export-map-modal';
 export {default as LoadDataModalFactory} from './modals/load-data-modal';
-
+export {default as LoadTileSetFactory} from './modals/tilesets-modals/load-tileset';
 export {default as LoadStorageMapFactory} from './modals/load-storage-map';
 export {default as ModalDialogFactory} from './modals/modal-dialog';
 export {ModalTabItem, default as ModalTabsFactory} from './modals/modal-tabs';
@@ -201,8 +210,16 @@ export {default as ResetControlFactory} from './common/animation-control/reset-c
 export {default as SpeedControlFactory} from './common/animation-control/speed-control';
 export {default as WindowActionControlFactory} from './common/animation-control/window-action-control';
 
-export {default as HistogramPlotFactory} from './common/histogram-plot';
+export {default as HistogramPlotFactory, HISTOGRAM_MASK_MODE} from './common/histogram-plot';
 export {default as IconButton} from './common/icon-button';
+export {default as LinkRenderer} from './common/link-renderer';
+export {
+  default as ColumnStatsChartFactory,
+  HISTOGRAM_WIDTH,
+  HISTOGRAM_HEIGHT,
+  ColorChartHeader,
+  ColorChartTick
+} from './common/column-stats-chart';
 export {default as ImagePreview} from './common/image-preview';
 export {default as LineChartFactory} from './common/line-chart';
 export {default as RangeBrushFactory} from './common/range-brush';
@@ -273,7 +290,11 @@ export {
 export {default as FileUploadProgress} from './common/file-uploader/file-upload-progress';
 export {default as UploadButton} from './common/file-uploader/upload-button';
 export {default as Accessor} from './common/item-selector/accessor';
-export {ChickletButton, default as ChickletedInput} from './common/item-selector/chickleted-input';
+export {
+  default as ChickletedInput,
+  ChickletButton,
+  ChickletTag
+} from './common/item-selector/chickleted-input';
 export {
   default as DropdownList,
   ListItem,
@@ -408,7 +429,7 @@ export {
   SidePanelDivider,
   SidePanelSection,
   SpaceBetweenFlexbox,
-  StyledAttrbution,
+  StyledAttribution,
   StyledExportSection,
   StyledFilterContent,
   StyledFilteredOption,
@@ -420,6 +441,7 @@ export {
   StyledPanelDropdown,
   StyledPanelHeader,
   StyledType,
+  shouldForwardProp,
   TextArea,
   TextAreaLight,
   Tooltip,
@@ -446,6 +468,14 @@ export {
   VisConfigSwitchFactory,
   appInjector
 };
+export {
+  DROPPABLE_MAP_CONTAINER_TYPE,
+  SORTABLE_LAYER_TYPE,
+  SORTABLE_EFFECT_TYPE,
+  SORTABLE_SIDE_PANEL_TYPE,
+  DND_MODIFIERS,
+  DND_EMPTY_MODIFIERS
+} from './common/dnd-layer-items';
 
 // Individual Component from Dependency Tree
 export const TimeRangeSlider = appInjector.get(TimeRangeSliderFactory);
@@ -473,3 +503,4 @@ export {CloudListProvider, useCloudListProvider} from './hooks/use-cloud-list-pr
 export {default as useDndEffects} from './hooks/use-dnd-effects';
 export {default as useDndLayers} from './hooks/use-dnd-layers';
 export {default as useFeatureFlags} from './hooks/use-feature-flags';
+export {default as useLegendPosition} from './hooks/use-legend-position';

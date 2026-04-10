@@ -4,21 +4,16 @@
 import {project} from '@deck.gl/core';
 
 const vs = `
-  #ifdef NON_INSTANCED_MODEL
-    #define FILTER_ARROW_ATTRIB filtered
-  #else
-    #define FILTER_ARROW_ATTRIB instanceFiltered
-  #endif
-  attribute float FILTER_ARROW_ATTRIB;
+  in float filtered;
 `;
 
 const fs = ``;
 
 const inject = {
-  // create degenerate vertices instead of discarding pixels in the fragment shader
-  'vs:DECKGL_FILTER_GL_POSITION': `
-    if (FILTER_ARROW_ATTRIB == 0.) {
-      position = vec4(0., 0., 0., 0.);
+  'vs:#main-start': `
+    if (filtered == 0.) {
+      gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+      return;
     }
   `
 };

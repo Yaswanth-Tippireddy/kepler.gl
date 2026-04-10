@@ -14,12 +14,11 @@ const resolveAlias = {
   'react-redux': `${NODE_MODULES_DIR}/react-redux/lib`,
   'styled-components': `${NODE_MODULES_DIR}/styled-components`,
   'react-intl': `${NODE_MODULES_DIR}/react-intl`,
+  'react-palm': `${NODE_MODULES_DIR}/react-palm`,
   // Suppress useless warnings from react-date-picker's dep
   'tiny-warning': `${SRC_DIR}/utils/src/noop.ts`,
   // kepler.gl and loaders.gl need to use same apache-arrow
-  'apache-arrow': `${NODE_MODULES_DIR}/apache-arrow`,
-  // react-ai-assist needs to be resolved from same node_modules
-  'react-ai-assist': `${NODE_MODULES_DIR}/react-ai-assist`
+  'apache-arrow': `${NODE_MODULES_DIR}/apache-arrow`
 };
 
 // add kepler.gl submodule aliases

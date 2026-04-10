@@ -6,9 +6,14 @@ import booleanWithin from '@turf/boolean-within';
 import bboxPolygon from '@turf/bbox-polygon';
 import {fitBounds} from '@math.gl/web-mercator';
 import deepmerge from 'deepmerge';
-import pick from 'lodash.pick';
+import pick from 'lodash/pick';
 
-import {getCenterAndZoomFromBounds, validateBounds, MAPBOX_TILE_SIZE} from '@kepler.gl/utils';
+import {
+  getCenterAndZoomFromBounds,
+  validateBounds,
+  MAPBOX_TILE_SIZE,
+  validateViewPort
+} from '@kepler.gl/utils';
 import {MapStateActions, ReceiveMapConfigPayload, ActionTypes} from '@kepler.gl/actions';
 import {MapState, Bounds, Viewport} from '@kepler.gl/types';
 
@@ -18,7 +23,7 @@ import {MapState, Bounds, Viewport} from '@kepler.gl/types';
  * @public
  * @example
  *
- * import keplerGlReducer, {mapStateUpdaters} from 'kepler.gl/reducers';
+ * import keplerGlReducer, {mapStateUpdaters} from '@kepler.gl/reducers';
  * // Root Reducer
  * const reducers = combineReducers({
  *  keplerGl: keplerGlReducer,
@@ -101,7 +106,8 @@ export const updateMapUpdater = (
   state: MapState,
   action: MapStateActions.UpdateMapUpdaterAction
 ): MapState => {
-  const {viewport, mapIndex = 0} = action.payload;
+  const {viewport: inputViewport, mapIndex = 0} = action.payload;
+  const viewport = validateViewPort(inputViewport);
 
   if (state.isViewportSynced) {
     // The `updateViewport` function is typed as (Viewport, Viewport) -> Viewport but here the
@@ -272,6 +278,9 @@ export const receiveMapConfigUpdater = (
     });
   }
 
+  // make sure we validate map state before we merge
+  mergedState = validateViewPort(mergedState);
+
   return {
     ...mergedState,
     // update width if `isSplit` has changed
@@ -413,7 +422,7 @@ function updateViewportBasedOnBounds(state: MapState, newMapState: MapState) {
     if (!booleanWithin(viewportBoundsPolygon, maxBoundsPolygon)) {
       const {latitude, longitude, zoom} = fitBounds({
         width: newMapState.width,
-        height: newMapState.width,
+        height: newMapState.height,
         bounds: [
           [newStateMaxBounds[0], newStateMaxBounds[1]],
           [newStateMaxBounds[2], newStateMaxBounds[3]]

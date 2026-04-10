@@ -3,9 +3,9 @@
 
 import Console from 'global/console';
 
-import {arrayMove} from '@dnd-kit/sortable';
-import {GEOCODER_LAYER_ID} from '@kepler.gl/constants';
-import {Layer as DeckLayer, LayerProps as DeckLayerProps} from '@deck.gl/core/typed';
+import {GEOCODER_LAYER_ID, LIGHT_AND_SHADOW_EFFECT} from '@kepler.gl/constants';
+import {Layer as DeckLayer} from '@deck.gl/core';
+type DeckLayerProps = any;
 import {
   Field,
   TooltipField,
@@ -14,10 +14,13 @@ import {
   Editor,
   Feature,
   FeatureSelectionContext,
+  BindedLayerCallbacks,
+  LayerCallbacks,
   Viewport
 } from '@kepler.gl/types';
 import {
   FindDefaultLayerPropsReturnValue,
+  FindDefaultLayerProps,
   Layer,
   LayerClassesType,
   OVERLAY_TYPE_CONST,
@@ -27,6 +30,8 @@ import {
 import KeplerTable from '@kepler.gl/table';
 import {VisState} from '@kepler.gl/schemas';
 import {isFunction, getMapLayersFromSplitMaps, DataRow} from '@kepler.gl/utils';
+import {arrayMove} from '@kepler.gl/common-utils';
+
 import {ThreeDBuildingLayer} from '@kepler.gl/deckgl-layers';
 
 export type LayersToRender = {
@@ -84,12 +89,11 @@ export function findDefaultLayer(dataset: KeplerTable, layerClasses: LayerClasse
         }))
       );
     },
-    [] as LayerClassesType[keyof LayerClassesType][]
+    [] as (FindDefaultLayerProps & {type: string})[]
   );
 
   // go through all layerProps to create layer
   return layerProps.map(props => {
-    // @ts-expect-error TODO: checking props.type !== null
     const layer = new layerClasses[props.type](props);
     return typeof layer.setInitialLayerConfig === 'function' && dataset.dataContainer
       ? layer.setInitialLayerConfig(dataset)
@@ -233,7 +237,8 @@ export function renderDeckGlLayer(props: any, layerCallbacks: {[key: string]: an
     mapState,
     interactionConfig,
     animationConfig,
-    mapLayers
+    mapLayers,
+    experimentalContext
   } = props;
   const dataset = datasets[layer.config.dataId];
   const {gpuFilter} = dataset || {};
@@ -250,7 +255,8 @@ export function renderDeckGlLayer(props: any, layerCallbacks: {[key: string]: an
     animationConfig,
     objectHovered,
     visible,
-    dataset
+    dataset,
+    experimentalContext
   });
 }
 
@@ -345,27 +351,15 @@ export type ComputeDeckLayersProps = {
 export function bindLayerCallbacks(
   layerCallbacks: LayerCallbacks = {},
   idx: number
-): Record<string, (idx: number, val: any) => void> {
+): BindedLayerCallbacks {
   return Object.keys(layerCallbacks).reduce(
     (accu, key) => ({
       ...accu,
       [key]: val => layerCallbacks[key](idx, val)
     }),
-    {} as Record<string, (_idx: number, val: any) => void>
+    {} as Record<string, (val: unknown) => void>
   );
 }
-
-export type LayerCallbacks = {
-  onLayerHover?: (idx: number, value: any) => void;
-  onSetLayerDomain?: (idx: number, value: any) => void;
-  onFilteredItemsChange?: (
-    idx: number,
-    event: {
-      id: string;
-      count: number;
-    }
-  ) => void;
-};
 
 // eslint-disable-next-line complexity
 export function computeDeckLayers(
@@ -376,6 +370,7 @@ export function computeDeckLayers(
 ): Layer[] {
   const {
     datasets,
+    effects,
     layers,
     layerOrder,
     layerData,
@@ -390,6 +385,10 @@ export function computeDeckLayers(
     options || {};
 
   let dataLayers: any[] = [];
+
+  const hasShadowEffect = effects.some(effect => {
+    return effect.type === LIGHT_AND_SHADOW_EFFECT.type;
+  });
 
   if (layerData && layerData.length) {
     const mapLayers = getMapLayersFromSplitMaps(splitMaps, mapIndex || 0);
@@ -418,7 +417,10 @@ export function computeDeckLayers(
             mapState,
             interactionConfig,
             animationConfig,
-            mapLayers
+            mapLayers,
+            experimentalContext: {
+              hasShadowEffect
+            }
           },
           bindedLayerCallbacks
         );
@@ -483,4 +485,21 @@ export function addLayerToLayerOrder(
   layerId: string
 ): string[] {
   return [layerId, ...layerOrder];
+}
+
+export function getLayerHoverPropValue(
+  data: DataRow | AggregationLayerHoverData | null | undefined,
+  fieldIndex: number
+) {
+  if (!data) return undefined;
+  if (data instanceof DataRow) return data.valueAt(fieldIndex);
+  return data[fieldIndex];
+}
+
+/** Checks if any Deck layers are in the process of loading. */
+export function areAnyDeckLayersLoading(layers: DeckLayer[]): boolean {
+  return layers.some(
+    // layer.isLoaded changes frequently in Deck (even on hover) so we check additional properties
+    layer => layer.internalState && !layer.isLoaded
+  );
 }

@@ -15,6 +15,383 @@ Each version should:
 Ref: http://keepachangelog.com/en/0.3.0/
 -->
 
+## [3.3.0-alpha.0] - Apr 5 2026
+
+- 44d1e47f fix: preserve line breaks in tooltip field values (#3311)
+- e2cc341b fix: geocoder coordinate search results not showing (#2245) (#3322)
+- 1c2db0fd feat: add layer visibility toggle to map legend (#3303) (#3324)
+- 385ed909 fix(components): disable preserveDrawingBuffer by default for better performance (#3326)
+- f182d6cc fix(geojson-layer): initialize strokeColor for LineString features (#2305) (#3338)
+- f25f1286 fix: boolean parsing for yes/no string values (#3346) (#3365)
+- be6ba648d chore: deck.gl 9.2 upgrade & loaders.gl, luma.gl upgrades (#3271)
+- bc59e880b chore: Update kepler-jupyter to use kepler.gl v3.2.0 (#3219)
+
+## [3.2.6] - Mar 16 2026
+
+- b5ffed55b feat: add extra map export resolutions (#3357)
+- faa000c6c feat(kepler-jupyter): version 0.4.0rc1 (#3345)
+- efb072eb5 fix: colors not working in trip layer of TABLE mode (#3347)
+- ca30df0e1 fix: create trip layer from duckdb table (#3344)
+- cc33b0c8f feat: add support to DECIMAL column type (#3341)
+- 40ce323a8 docs(localization): add translation guide for contributors (#3335)
+- 35ab765d4 fix: tileset loading indicator improvements (#3331)
+- cec11f3cb fix: add security warning about Mapbox token in HTML exports (#3139) (#3330)
+- e2f672cdc fix: replace broken vis.academy link with docs.kepler.gl (#3309)
+- 8c5030c3e fix: export zoom icon (#3308)
+- 8cf4274bf fix: layer configurator icon update (#3306)
+- 192f0fd2b feat: getDuckDBColumnTypes improvements (#3304)
+- 3762a2b36 feat: make tile loading indicator more explicit (#3305)
+- e5b7df170 rollback change, and truncate tooltip (#3300)
+- cbb3204cf feat: Implement WKT validation in data-type.ts (#3298)
+- e705fc8aa fix: name new point layer using label if provided (follow-up) (#3297)
+- 4bdf8f4ff fix: name new point layer using label if provided
+- cf76bba68 fix: hide Kepler editor tooltip “top-left jump” on invalid hover coords (#3294)
+- 2ba9f6e22 fix: Clamp legend height if it exceeds available space (#3276)
+- 562cb1ba8 kepler.gl-jupyter: codespell (#3273)
+
+## [3.2.5] - Dec 24 2025
+
+- 81f490d94 fix: trigger a redraw from icon layer once the icons are loaded. (#3269)
+- 26e4a17d4 fix(ai-assistant): clear LLM history on restart chat (#3262)
+- 2d985982a fix: image export for non-webpack bundlers (#3266)
+
+## [3.2.4] - Dec 9 2025
+
+- 82630dee3 fix: ensure icon layer render with the latest geometry (#3259)
+- 422c1b347 fix: Avoid Monaco AMD bundle when importing `@kepler.gl/duckdb` (#3255)
+
+## [3.2.3] - Nov 28 2025
+
+- 2288bc324 fix: Allow passing arrow tables to ArrowDataContainer (#3247)
+- a0a4eefc1 fix: Yarn start failed (#3249)
+
+## [3.2.2] - Nov 25 2025
+
+- f66ab3c61 fix: Allow passing arrow tables to ArrowDataContainer (#3242)
+- e2efa50dd fix: copy geometry when geometry is of binary format (#3236)
+
+## [3.2.1] - Nov 3 2025
+
+- d2b130f95 fix: detect h3 column in arrow (#3230)
+- 2aa200913 fix: interaction panel causes layout shift (#3224)
+- 2e24bd207 feat: extend bigInt casting to support UBIGINT HUGEINT UHUGEINT in duckdb (#3227)
+- 79d745ae2 [fix] fix for wkb/wkt saved in DuckDB as varchar (#3208)
+- 24529655d fix: fixes to channel by value (#3216)
+- f211ccd0a [Bug]: Fix scrollTop reest when scrolling horizontally in data table (#3206)
+- b6aee95f3 docs: add security escalation policy (#3210)
+- a6e9cb998 feat: ai assistant support llm proxy server (#3188)
+- 2005927bd [fix] icon layer - render default icon in case svgIconUrl loading fails (#3204)
+- 64ec955ae [chore] Add missing release notes for 3.2 (#3200)
+- 70a129c4e [feat] vector tile layer - add feature uid selector (#3203)
+- 2b8af8260 [fix] vector tile layer - use highlightedFeatureId for hover (#3202)
+- 32fb77f42 [chore] bump demo-app example to kepler.gl 3.2 (#3201)
+- 96dcef6b9 [fix] fixes for legend (#3199)
+- 26dd6e832 [website] fix mobile layout (#3197)
+- 7be817789 [website] Add OpenJS Foundation copyright and logo (#3196)
+
+## [3.2.0] - Aug 21 2025
+
+- 3b0be2dda [chore] docs update (#3192)
+- 9c132de28 [chore] docs update (#3180)
+- d4d8d184b [chore] raster tile form - add link to docs (#3183)
+- f91564fb9 [fix] save raster layer config with layer, don't rely on app config (#3184)
+- 420bbf2ad [feat] add support for boolean filter in vector tiles (#3190)
+- e4b64a080 [chore] Replace Studio section with Desktop section (#3189)
+- 751148111 [chore] Fix and update examples to v3.1.10 (#3182)
+
+## [3.1.10] - Aug 14 2025
+
+- 09297acc0 [improvement] optimize speed of getCategoricalColorMap (#3178)
+- 1545fafe5 [chore] Update react-modal types version (#3173)
+- fc1b91fa9 [chore] Create props interface for LinkRenderer Component (#3172)
+- 5f664c3a5 [chore] pass through logoComponent to PlotContainer (#3176)
+- 46cc44109 [fix] fix for a crash in getBins when numeric strings are treated as numbers (#3175)
+- 0850ef2eb [chore] Update the Screenshot Image in Readme (#3171)
+- f2001983a [feat] export duckdb column logic (#3170)
+- 3df1c4ddf [chore] expose showDeleteDataset prop (#3166)
+- 2a666ae0c [chore] export dnd constants
+
+## [3.1.9] - July 28 2025
+
+- 0d6d5fd1a [chore] raster tile - hide server settings by default (#3163)
+- 7551f5d7d [fix] DuckDB mode: space in column name breaks file import (#3153) (#3156)
+- 047334712 [fix] fit to bounds - fix initial basemap and deck projections mismatch (#3155)
+- d43e8bbff [chore] replace ai-assistant model config file with ts for npm availability (#3154)
+- 1a93a2b99 [chore] raster tile layer tests (#3152)
+- 343b554db [feat] WMS layer improvements (#3151)
+- c1d2b8616 [fix] button spinner fix (#3150)
+- a05b3cf6d [fix] WMS layer fixes 2 (#3149)
+- 1a47e08a5 [fix] WMS layer fixes 1 (#3148)
+- 272fd1ae7 [Feat] WMS Layer - development (#3092)
+- 9f656e06c [Docs] Add tutorial Spatial Data Analysis with Kepler.gl AI Assistant (part1) (#3126)
+- ca628b523 [Chore] rewrite plot container for perf improvement (#3133)
+- 49f4c3de2 [chore] Update old imports (#3131)
+- 3b6e9049a [fix] improvements for raster tile layer (#3124)
+- 4237b0a0e [chore] migrate custom-palette from react-sortable-hoc to dnd-kit (#3128)
+- 49fbf8faa [fix] aggregation layers fixes for custom color scale (#3129)
+- edf1f1ddd [fix] spatial join ai instruction (#3127)
+
+## [3.1.8] - May 26 2025
+
+- 4fd570c3e [example] Kepler.gl getting started example with Vite (#3123)
+- f57173d35 [fix] DuckDB - cast BigInts to Double by default (#3120)
+- fd4702c4f [perf] disable strokes by default for polygons in geojson layer (#3118)
+- 1542bb6f7 [Feat] Add OSM road tool to support point analysis on road networks (#3117)
+- 9da33316c [feat] Generate "idea" buttons from LLM (#3115)
+- 330030185 [Fix] AI Connection to Ollama failed (#3113)
+- be6ee823a [Bug] fix update selected feature bbox (#3110)
+- 0dcacc66e [fix] Custom picker fix when called during initialization (#3107)
+- 4fc1344a1 [Chore] style tweak (#3109)
+- 3769aaf74 [Chore] Better handle add data to map error and loading indicator (#3106)
+
+## [3.1.7] - May 14 2025
+
+- 014059b97 [fix] fixes for raster tile layer (#3102)
+- 518c515d1 [feat] loading indicator improvements for tiled layers (#3097)
+- e290f281e [fix] fix for getFieldsFromTile regression (#3099)
+- 7087ffe15 [fix] fix tooltip crashing for trip layer (#3103)
+- a231ebfc1 [fix] fix for image export with effects (#3105)
+- da38e26b9 [chore] Update Comments in actions (#3098)
+- 21aac1c85 [fix] fixes for custom input (#3095)
+- 271b8cc98 [fix] fix types publishing for table module (#3096)
+- 3d3bb9b54 [chore] add cdnUrl option to application config (#3093)
+- 9cdf73ea4 [Bug] remove layer item z-index (#3091)
+
+## [3.1.6] - May 8 2025
+
+- 33203a6de [fix] fix loading indicotor not hidden regression (#3088)
+- 913176bb6 [bug] fix lodash imports regression (#3089)
+
+## [3.1.5] - May 8 2025
+
+- 223d14b60 [chore] ts fixes
+- 3570ac429 [feat] Raster Tile Layer - development in progress (#3048)
+- 07e5beae2 [chore] import add tileset dialog styling (#3085)
+- 6568c0c94 [Feat] Add Spatial Data Analysis tools to AI Assistants (#3057)
+- fd08fa1a9 [Chore] export more kepler-gl prop selector (#3081)
+
+## [3.1.4] - May 5 2025
+
+- 03b8ea0a9 [Chore] Use clonedeep in interaction config load (#3080)
+- a6104eafe [Chore] drop lodash per-method packages in favor of the main lodash (#3065)
+- abb3fd473 [feat] h3 layer from decimal format (#3066)
+- 191f66161 [fix] fix for exported maps. Change react-markdown to markdown-to-jsx (#3077)
+- 3c83e74b3 [chore] Added types in Action (#3075)
+- 8baddbbaf [Chore] export bottom widget field selector (#3078)
+- afc21c263 [chore] Fix TypeScript Errors (#3076)
+- 822cd0e32 [Style] align icon styles, use lucid icons (#3073)
+
+## [3.1.3] - May 2 2025
+
+- d5ef5f713 [Chore] remove dnd-kit from dependency of utils and reducer, remove use of withState in dnd context (#3067)
+
+## [3.1.2] - May 1 2025
+
+- fb3615b90 [chore] extra duckdb utils export (#3063)
+- a0d14b770 [fix] updateVisDataUpdater early exit (#3058)
+- 111b3180d [chore] pass props directly to Draggable legend, not withState (#3055)
+- 6bb6c98a1 [fix] Legend positioning fixes (#3052)
+- 7d601f110 [fix] Only open either the mapDraw dropdown or locale dropdown (#3056)
+- 52a2d2a2b [CHORE] disable auto lyaer creation based on color by int column (#3049)
+- e935ef51d [chore] extra exports from duckdb module (#3050)
+- 864dbe5c6 [Chore] Fix more style components warnings (#3047)
+- 9de30e2ba [Chore] Export duckdub utils, allow cols in validate dataset (#3042)
+- 6cc1ee4ef [Bug] Fix styled-components warnings for passing props to Dom (#3039)
+- cb5c14f81 [Bug] Add mapbox-gl dep to prevent Failed to resolve import in vite (#3036)
+- 7c3365fcf [chore] Get started minimal example with esbuild (#3028)
+- 224975a25 [chore] pass duckDB adapter via application config (#3023)
+
+## [3.1.1] - March 11 2025
+
+- e271c8f8c [fix] fix for potential freeze during add data pipeline (#3015)
+- 9eef01c48 [fix] make onFilteredItemsChange callback optional (#3016)
+- 7107e4177 [fix] fixes for vector-tile layer (#3013)
+- b4b979d59 [fix] schema panel displays temp table (#3014)
+- ed2b5f322 [chore] fix react deprecation warnings (#3011)
+- ba75087a1 [fix] DuckDB: update schema after running a query (#3009)
+- b57b1ff9a [chore] update umd example to latest stable release (#3010)
+- 9762dc379 [feat] DuckDb plugin: drag and drop file directly as table (#2952)
+- 8e737e8cc [chore] changes to webpack.config path separators (#2623)
+- 8fbb3b0b4 [fix] Fix Save map action for FSQ provider (overwrite logic) (#3006)
+- df829fbe9 [fix] fix for geocoder coordinates (#3002)
+- 44acecf2a [fix] adjust getZoomFactor for icon layer (#3004)
+- 69ea2a176 [fix] fix for Icon layer UI (#3003)
+- 702b49e3f [fix] Fix for More than one copy of react-palm was loaded error message (#3007)
+- a67a7fcab [Bug] make sure the RangeBrush updates on slider range changes (#2047)
+- 631f7a304 [fix] Update geojson-utils.ts to support GeometryCollections (#2059)
+- ce867606f [chore] Bump express from 4.19.2 to 4.21.0 (#2655)
+- c9dd05f32 [chore] Bump nanoid from 3.3.7 to 3.3.8 in /bindings/kepler.gl-jupyter/js (#2906)
+- b2e24345c [chore] Bump fast-xml-parser from 4.4.0 to 4.5.0 (#2688)
+- 976b079b3 [chore] Bump lodash from 4.17.19 to 4.17.21 in /src/deckgl-layers (#2858)
+- 4074b320f [chore] Bump esbuild from 0.23.1 to 0.25.0 in /examples/demo-app (#2994)
+- 57573d344 [chore] Bump elliptic from 6.6.0 to 6.6.1 (#2997)
+- c5dbd571d [chore] Fix lint issues displayed on GitHub's File Changes page (#3001)
+- b98a39def [fix] Transform binary buffers to hex wkb when saved to json/hmtl maps (#2998)
+- 221b243c2 [feat] improvements to duckDB column type handling (#2970)
+- d30a95bcd [fix] improvements for layer type change logic (#2995)
+- 547ffeb0c [fix] arrow text labels from non-string source vectors (#2990)
+- 7e2e619e2 [chore] updates to website (#2992)
+- 7e2db2b7d [chore] Improved Props and Gettings Started Docs (#2993)
+- 1216d235b [fix] export geoarrow to CSV as geojson (#2988)
+- 2c525ed8e [fix] restore suport for string wkb; save binary wkb as hex wkb (#2982)
+- e149384df [chore] update to hubble.gl 1.4 (#2987)
+- c39778ce9 [fix] AI Assistant sends messages to 127.0.0.1 instead of remote Ollama URL (#2985)
+- 81780f5ab [chore] Update README.md (#2981)
+- f8fbf2461 [fix] heatmap renders nothing with black color or duplicate color (#2978)
+- 11350eecb [chore] check for required env variables in demo-app and output a warning (#2977)
+- 0325ef6ee [fix] FSQ storage provider - use prompt instead of auto login after logout (#2975)
+- bbe51b980 [fix] fix for point column suggestion not working (#2974)
+- fa1cc4f1e [chore] Rename ".env.template " to ".env.template" to prevent git clone fail (#2976)
+- 47cd3da81 [keplergl-jupyter] Release v0.3.7 #2969
+- 7bbe0b839 [Jupyter][Fix] convert datetimes to str so they can convert to json (#2968)
+- 5367abaee [fix] fix geojson and trip layer crash without data (#2964)
+- e1c9f869c [fix] FSQ Storage provider temp fix (#2960)
+- 098ee9b42 [fix] fix for minzoom in examples (#2959)
+- f7f10379e [chore] update demo-app version (#2958)
+- ab17e7565 [chore] update banner mesasge (#2957)
+
+## [3.1.0] - January 29 2025
+
+- 089aa8cf8 [chore] vector tiles refactoring (#2945)
+- 405c36e23 [fix] DuckDB: make query result title more reusable (#2956)
+- 8033578f2 [docs] update docs for Kepler.gl release 3.1 (#2941)
+- b1953cff7 [feat] banner with extra release info (#2955)
+- e95c4e5a4 [fix] arrow tables - save timestamps as iso date string (#2953)
+- 4aef54a93 [fix] adjust margin for map save modal to show Save button without scrolling (#2954)
+- f00b4b88d [chore] testing mp4 embed with gitbook (#2951)
+- f292d6181 [Chore] Add DeepSeek in Ai Assistant (#2946)
+- c5484e1ae [fix] plumbing for DuckDB plugin support (#2949)
+- da9988532 [chore] demo-app bump kepler.gl version (#2944)
+
+## [3.1.0-alpha.7] - January 27 2025
+
+- 7356c5afe [fix] hotfix for arrow saving / loading, without support of binary data (#2943)
+- 4031451b0 [feat] duckdb plugin (#2798)
+- 029bcc548 [feat] loading indicator (#2936)
+- 1a68d1bd2 [Chore] Remove SQL plugin for AI Assistant (#2938)
+- 4be4b6987 [Misc] Update demo-app README.md (#2934)
+- b38054fa8 [Feat] AI Assistant Query (#2819)
+- 4cd912097 [fix] Added 24 limit for maximum zoom (#2635)
+- b1bddd5fb [chore] Fixes for using in a vite app (#2898)
+- 4d1bfb3d0 [feat] minZoom and maxZoom for examples (#2933)
+- 81be74920 [fix] don't auto create point layer from vector tiles (#2932)
+
+## [3.1.0-alpha.6] - January 22 2025
+
+- 803b2f540 [fix] remove dependencies from useEffect (prev componentDidMount in app.tsx) (#2930)
+- 57926442f [fix] use saved map config for saved maps instead of zoom in to data (#2929)
+- 4af609245 [chore] add dot.env, updates to demo-app build, update gitignore (#2928)
+- ce23c7668 [feat] duckdb module updates (#2927)
+- fc974d852 [feat] duckdb module placeholder (#2926)
+- d1b3c9799 [fix] demo-app resolve to proper node_modules (#2925)
+- 594250bc7 [fix] fix demo-app yarn start (#2924)
+- 913ba1ce0 [feat] support for table plugin in demo examples and privately stored datasets (#2923)
+- 630728190 [fix] fixes for style editor preview and error (#2919)
+- d6aa2757e [fix] fix neighbor mode hovering crash in arc/line layers (#2920)
+- e2bd71d4e [fix] fix csv table examples for layers (#2921)
+- a6e151a0f [fix] vector tile layer fixes (#2911)
+
+## [3.1.0-alpha.5] - January 15 2025
+
+- b117b08ab [fix] fix for exported html maps
+
+## [3.1.0-alpha.4] - January 15 2025
+
+- 933a91a2f [fix] check for geoarrow extension in geojson layer (#2916)
+- 0abe9979d [fix] opening multiple examples breaks url (#2915)
+- 49e7956e8 [fix] Don't show 0 when description is empty (#2913)
+- cb5d4ed42 [fix] fix styled-components version in exported map (#2907)
+- b1d243363 [fix] adjust tooltip style (#2910)
+- f0c57a869 [fix] fix website commit section
+- 2753321c5 [feat] Vector Tile layer fixes (#2899)
+- 073c585e4 [Fix] add_data() function failed in keplergl-jupyter
+- 6e425972e [feat] mapbox and maplibre simultaneous support (#2897)
+- 22f9ba14d [Chore] Fix lint error for Register actions (#2896)
+- ccfc2e2ad [fix] Image export legend positioning (#2895)
+- cf02a3ca6 [chore] Upgrade styled components to v6 (#2894)
+- 4c9ffe827 [fix] Prevent infinite useEffects loop in range-plot (#2892)
+- 0b67c5409 [fix] fixed onOptionSelected handler when option is null (#2891)
+- 40ba839e3 [fix] Add ellipsis in LayerTypeListItem (#2890)
+- d0d31bdfa [fix] Handle selecting geojson polygon with missing properties (#2889)
+- 79801bec0 [fix] Tippy tooltips in animation controls (#2888)
+- 0ad53723a [feat] Adding setAnimationConfig action (#2887)
+- 67b001980 [chore] export TimeFieldFilterProps (#2883)
+- 603fde8d1 [fix] Fixed issue when mapstate latitude or langitude are out of bounds (#2882)
+- 92c9e6abc [fix] Use floating-ui to deal with closing on click outside (#2886)
+- 4bcf55bd6 [Feat] Custom color scale for categorical/ordinal field (#2880)
+- 23f603428 [Bug] Prevent dragging legend component outside of container (#2885)
+- d549fcd4e [fix] copy map config style (#2878)
+- 34444fa54 [fix] check for allBins (#2876)
+- 8335ba410 [fix] Custom Color Scale fixes (#2875)
+- 141236513 [chore] Add several vis state mergers combineConfigs and improve TS (#2634)
+- 9f3f08944 [Chore] Add composedReducerSchema to schema manager (#2633)
+- e633177ef [chore] applyFilterConfig action (#2872)
+- ceb930e2d [Fix] incorrect multi-dataset filter domain (#2871)
+- 00dd00279 [fix] show scale options for Point Count in aggregation layers (#2870)
+- a39fcf8c4 [fix] pass strings to color palette inputs (#2873)
+- b89b19c6a [chore] Consolidate vis state tests (#2869)
+- 77e785713 [feat] Support custom ordinal color scale on string field in layer config (#2868)
+- cccc4be2b [feat] Free positioning of the legend (#2874)
+- 2d1d8e5f5 [Fix] add_data() function in keplergl-jupyter (#2867)
+- 3b46abd34 [feat] add LayerToggleVisibility for single splitMap (#2863)
+- b2b6f10c8 [Release] Candidate Kepler-Jupyter v0.3.4 (#2588)
+- 3bf006f41 [fix] Remove legend layer groups height capping (#2864)
+- f1245d7e5 [chore] ts refactoring (#2861)
+- a897715cc [Feat] Add custom color scale for aggregate layers (#2860)
+- 6bc594602 [Feat] replaceDataInMap action - save colorsByDataId (#2859)
+- be2f04e6d [chore] add fsq color palettes (#2862)
+- c7d3777fc [fix] change process to globalThis.process (#2865)
+- 5cb8a3431 [chore] Create SECURITY.md (#2845)
+
+## [3.1.0-alpha.3] - December 25 2024
+
+- 2cd7a859c [chore] fix missing dependencies in workspaces (#2856)
+
+## [3.1.0-alpha.2] - December 24 2024
+
+- f9b385a6e [fix] Fixed time filter bug where points located at the borders of the domains were not correctly displayed (#2854)
+- 59abc6a19 [fix] fix for custom color scales with tile layer (#2853)
+- 3a4bf667f [feat] histogram and point layer fixes (#2852)
+- f9c52e538 [feat] color scale histogram (#2851)
+- 3e7dc937a [fix] custom palette issues (#2850)
+- d55797991 [docs] Replace yarn global add with yarn dlx for puppeteer installation (#2849)
+- e106c1927 [feat] Plumbing for vector tile layer (#2839)
+- a2abbf72d [fix] fix yarn cover regression (#2846)
+- 6925bd429 [docs] update demo-app/README.md (#2847)
+- f05b6e37d [chore] Bump nanoid from 3.3.7 to 3.3.8 in /website (#2840)
+- 4baa44d9b [chore] Bump nanoid from 3.3.7 to 3.3.8 (#2837)
+- b09d7eb95 [Enhancement] support mapbox url protocol (#2693)
+- 215383661 [Feat] Redesign color range to use chormajs and d3 color function (#2835)
+- bded7af76 [Feat] handle layer color scale by field.domainQuantiles (#2829)
+- 5f7c26bd0 [fix] Prevent duplicate legend in line and arc layers (#2830)
+- 639c7a5b9 [feat] Apply new legend style (#2831)
+- f9c214dd5 [chore] getSelectedFeature (#2832)
+- efdf2ea8d [chore] ts fixes (#2827)
+- 074d123dd [Feat] Add display format setting for table/tooltip (#2826)
+- aec75d819 [Chore] Minor ts refactoring (#2825)
+- 1825b6572 [fix] Expand legend (#2824)
+- bb6a376e8 [fix] adjust time range filter on value set (#2823)
+- cef3faf19 [Feat] add h3 typed column (#2822)
+- c5d42ddc9 [fix] Fix multiple field filtering in setFilterUpdater (#2821)
+- c4d1cfff0 [FEAT] support domain.domainStops in layer color, render color legend based on zoom (#2815)
+- 3a4feac59 [fix] Line layer is not displayed for between hex ids (#2820)
+- 89411c820 [fix] Typescript 4.4 fixes (#2816)
+- 240289603 [feat] Show selected fields in the tooltip for aggregation layers (#2814)
+- 95c6ed14b [chore] Bump elliptic from 6.5.7 to 6.6.1 in /bindings/kepler.gl-jupyter/js (#2818)
+- fb3fa7b58 [chore] Bump cross-spawn from 6.0.5 to 6.0.6 in /website (#2817)
+- f476a1c4c [chore] Bump elliptic from 6.5.7 to 6.6.0 (#2720)
+- c727356f7 [chore] Bump cross-spawn from 6.0.5 to 6.0.6 (#2772)
+- 3950d73ab [chore] Fixes in README.md (#2810)
+- 786aa36cf [Fix] Don't modify height for with fixed height enabled; Height UI unification (#2804)
+- 2178d9057 [fix] show sync layer animations when there is one dataset (#2803)
+- 6f35313f7 [chore] timeline refactoring (#2802)
+- d50bbc831 [fix] Updated plot when changing cross filters (#2801)
+- b4dfa2fce [fix] disable Share Map for FSQ provider (#2808)
+- 86b5dda7e [Feat] AI Assistant [2] (#2777)
+- 5a0cbca66 [Bug] Fix issue with React StrictMode causing Dataset table to not display (#2683)
+- b147db8d5 [chore] Local Development Guide Update (#2806)
+- 6223be939 [fix] Foursquare storage provider improvements (#2800)
+
 ## [3.1.0-alpha.1] - December 3 2024
 
 - f6b37c6af [fix] fixes for exported maps
@@ -121,7 +498,7 @@ Ref: http://keepachangelog.com/en/0.3.0/
 - 1f9757b8 [feat] Pass in custom transformRequest function (#2534)
 - b644f203 [Fix] layer popover mapIndex (#2535)
 - 4b3c950f [fix] Fix sample maps (#2529)
-- 55fb2426 [chore]] Update COC to OpenJS (#2496)
+- 55fb2426 [chore] Update COC to OpenJS (#2496)
 - 0959de6a [Feat]Support Zoom to layer in layer panel (#2516)
 - ac0d3575 [Chore] docs: Add GeoArrow to supported formats (#2503)
 - 084d807f [Chore] Bump path-parse from 1.0.6 to 1.0.7 (#1569)

@@ -32,7 +32,6 @@ import {default as TripLayer} from './trip-layer/trip-layer';
 export {defaultLineWidth as tripDefaultLineWidth} from './trip-layer/trip-layer';
 export {
   coordHasLength4,
-  containValidTime,
   isTripGeoJsonField,
   parseTripGeoJsonTimestamp,
   getAnimationDomainFromTimestamps
@@ -41,6 +40,35 @@ import {default as S2GeometryLayer} from './s2-geometry-layer/s2-geometry-layer'
 export {defaultElevation as s2DefaultElevation} from './s2-geometry-layer/s2-geometry-layer';
 export {getS2Center} from './s2-geometry-layer/s2-utils';
 export {default as AggregationLayer} from './aggregation-layer';
+import {default as VectorTileLayer} from './vector-tile/vector-tile-layer';
+
+export {default as VectorTileIcon} from './vector-tile/vector-tile-icon';
+export {default as VectorTileLayer} from './vector-tile/vector-tile-layer';
+export {getNumVectorTilesBeingLoaded} from './vector-tile/loading-counter';
+
+import {default as RasterTileLayer} from './raster-tile/raster-tile-layer';
+export {default as RasterTileIcon} from './raster-tile/raster-tile-icon';
+export {
+  default as RasterTileLayer,
+  getNumRasterTilesBeingLoaded
+} from './raster-tile/raster-tile-layer';
+
+import {default as Tile3DLayer} from './tile3d-layer/tile3d-layer';
+export {default as Tile3DLayer} from './tile3d-layer/tile3d-layer';
+export {default as Tile3DLayerIcon} from './tile3d-layer/tile3d-layer-icon';
+export {
+  CATEGORICAL_COLORMAP_ID,
+  DATA_SOURCE_COLOR_DEFAULTS,
+  RASTER_COLOR_RESET_PARAMS,
+  PRESET_OPTIONS
+} from './raster-tile/config';
+export {RasterLayerResources} from './raster-tile/url';
+export {getCategoricalColormapDataUrl} from './raster-tile/image';
+export * from './raster-tile/types';
+export * from './raster-tile/raster-tile-utils';
+
+export {default as WMSLayerIcon} from './wms-layer/wms-layer-icon';
+
 import {LAYER_TYPES} from '@kepler.gl/constants';
 export {parseGeoJsonRawFeature} from './geojson-layer/geojson-utils';
 // base layer
@@ -49,8 +77,7 @@ export type {
   LayerBaseConfig,
   VisualChannelDomain,
   VisualChannel,
-  VisualChannelDescription,
-  FindDefaultLayerPropsReturnValue
+  VisualChannelDescription
 } from './base-layer';
 export * from './base-layer';
 
@@ -68,7 +95,11 @@ export const KeplerGlLayers = {
   H3Layer,
   ScenegraphLayer,
   TripLayer,
-  S2GeometryLayer
+  S2GeometryLayer,
+  VectorTileLayer,
+  RasterTileLayer,
+  WMSLayer,
+  Tile3DLayer
 };
 
 export type LayerClassesType = typeof LayerClasses;
@@ -85,7 +116,11 @@ export const LayerClasses = {
   [LAYER_TYPES.hexagonId]: H3Layer,
   [LAYER_TYPES['3D']]: ScenegraphLayer,
   [LAYER_TYPES.trip]: TripLayer,
-  [LAYER_TYPES.s2]: S2GeometryLayer
+  [LAYER_TYPES.s2]: S2GeometryLayer,
+  [LAYER_TYPES['vectorTile']]: VectorTileLayer,
+  [LAYER_TYPES['rasterTile']]: RasterTileLayer,
+  [LAYER_TYPES.wms]: WMSLayer,
+  [LAYER_TYPES.tile3d]: Tile3DLayer
 };
 
 export * from './mapbox-utils';
@@ -107,6 +142,7 @@ import {
   getTooltip,
   getCursor
 } from './editor-layer/editor-layer-utils';
+import WMSLayer from './wms-layer/wms-layer';
 export const EditorLayerUtils = {
   isDrawingActive,
   onClick,

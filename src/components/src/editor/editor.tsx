@@ -4,9 +4,9 @@
 import React, {Component, CSSProperties, KeyboardEvent} from 'react';
 import {createPortal} from 'react-dom';
 import styled from 'styled-components';
-import window from 'global/window';
+import Window from 'global/window';
 import classnames from 'classnames';
-import get from 'lodash.get';
+import get from 'lodash/get';
 import {createSelector} from 'reselect';
 import FeatureActionPanelFactory, {FeatureActionPanelProps} from './feature-action-panel';
 import {
@@ -18,7 +18,7 @@ import {
 } from '@kepler.gl/constants';
 import {Layer, EditorLayerUtils} from '@kepler.gl/layers';
 import {Filter, FeatureSelectionContext, Feature} from '@kepler.gl/types';
-import {FeatureOf, Polygon} from '@nebula.gl/edit-modes';
+import {Feature as EditableFeature, Polygon} from '@deck.gl-community/editable-layers';
 import {Datasets} from '@kepler.gl/table';
 
 import {RootContext} from '../context';
@@ -76,7 +76,7 @@ export default function EditorFactory(
               <StyledWrapper className={classnames('editor', className)} style={style}>
                 {visiblePanel ? (
                   <FeatureActionPanel
-                    selectedFeature={selectedFeature as FeatureOf<Polygon>}
+                    selectedFeature={selectedFeature as EditableFeature<Polygon>}
                     datasets={datasets}
                     layers={layers}
                     currentFilter={currentFilter}
@@ -102,11 +102,11 @@ export default function EditorFactory(
     state = {};
 
     componentDidMount() {
-      window.addEventListener('keydown', this._onKeyPressed);
+      Window.addEventListener('keydown', this._onKeyPressed);
     }
 
     componentWillUnmount() {
-      window.removeEventListener('keydown', this._onKeyPressed);
+      Window.removeEventListener('keydown', this._onKeyPressed);
     }
 
     layerSelector = (props: EditorProps) => props.layers;
@@ -191,7 +191,7 @@ export default function EditorFactory(
 
       return (
         <PortalEditor
-          selectedFeature={selectedFeature as FeatureOf<Polygon>}
+          selectedFeature={selectedFeature as EditableFeature<Polygon>}
           visiblePanel={Boolean(rightClick) && selectedFeature && index === mapIndex}
           datasets={datasets}
           layers={availableLayers}

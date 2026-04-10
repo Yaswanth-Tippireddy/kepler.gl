@@ -196,6 +196,8 @@ export default {
     disable3DMap: 'Desactivar mapa 3D',
     DrawOnMap: 'Dibujar en el mapa',
     selectLocale: 'Seleccionar configuración regional',
+    showAiAssistantPanel: 'Mostrar el panel de AI Assistant',
+    hideAiAssistantPanel: 'Ocultar el panel de AI Assistant',
     hideLayerPanel: 'Ocultar la tabla de capas',
     showLayerPanel: 'Mostrar la tabla  de capas',
     moveToTop: 'Desplazar arriba de las capas de datos',
@@ -253,6 +255,7 @@ export default {
       ratio16_9: '16:9',
       resolutionTitle: 'Resolución',
       resolutionDescription: 'Una alta resolución es mejor para las impresiones.',
+      resolutionPlaceholder: 'Seleccionar resolución...',
       mapLegendTitle: 'Leyenda del mapa',
       mapLegendAdd: 'Añadir leyenda al mapa'
     },

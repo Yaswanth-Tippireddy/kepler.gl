@@ -6,8 +6,8 @@ import {ScrollSync, AutoSizer, OnScrollParams, GridProps, Index} from 'react-vir
 import styled, {withTheme} from 'styled-components';
 import classnames from 'classnames';
 import {createSelector} from 'reselect';
-import get from 'lodash.get';
-import debounce from 'lodash.debounce';
+import get from 'lodash/get';
+import debounce from 'lodash/debounce';
 import {ArrowDown} from '../icons';
 
 import {CellSizeCache} from './cell-size';
@@ -173,7 +173,7 @@ export const Container = styled.div<ContainerProps>`
     }
   }
 
-  :focus {
+  &:focus {
     outline: none;
   }
 `;
@@ -194,7 +194,7 @@ const columnWidthFunction =
   };
 
 interface GetRowCellProps {
-  dataContainer: DataContainerInterface;
+  dataContainer: DataContainerInterface | null;
   columns: (string & {ghost?: boolean})[];
   column: string;
   colMeta;
@@ -212,7 +212,7 @@ const defaultGetRowCell = (
   const rowIdx = sortOrder && sortOrder.length ? get(sortOrder, rowIndex) : rowIndex;
   const {type} = colMeta[column];
 
-  const value = dataContainer.valueAt(rowIdx, columns.indexOf(column));
+  const value = dataContainer?.valueAt(rowIdx, columns.indexOf(column));
   return value === null || value === undefined || value === ''
     ? ''
     : formatter
@@ -237,7 +237,7 @@ const StyledStatsControl = styled.div<StatsControlProps>`
   font-size: 12px;
   color: ${props => props.theme.activeColor};
   background-color: ${props => props.theme.headerCellStatsControlBackground};
-  :hover {
+  &:hover {
     cursor: pointer;
   }
 
@@ -279,8 +279,8 @@ interface TableSectionProps {
   isPinned?: boolean;
   columns: (string & {ghost?: boolean})[];
   headerGridProps?;
-  fixedWidth?: number;
-  fixedHeight?: number;
+  fixedWidth?: number | null;
+  fixedHeight?: number | null;
   onScroll?: (params: OnScrollParams) => void;
   scrollTop?: number;
   dataGridProps: {
@@ -349,7 +349,7 @@ export const TableSection = ({
                 height={headerGridProps.height + browserScrollBarWidth}
                 width={headerGridWidth}
                 scrollLeft={scrollLeft}
-                onScroll={onScroll}
+                onScroll={args => onScroll?.({...args, scrollTop: scrollTop ?? 0})}
               />
             </div>
             <div
@@ -381,15 +381,15 @@ export interface DataTableProps {
   cellSizeCache?: CellSizeCache;
   pinnedColumns?: string[];
   columns: (string & {ghost?: boolean})[];
-  fixedWidth?: number;
+  fixedWidth?: number | null;
   theme?: any;
-  dataContainer: DataContainerInterface;
-  fixedHeight?: number;
+  dataContainer: DataContainerInterface | null;
+  fixedHeight?: number | null;
   colMeta: ColMeta;
   sortColumn: SortColumn;
   sortTableColumn: (column: string, mode?: string) => void;
   pinTableColumn: (column: string) => void;
-  setColumnDisplayFormat: (formats: {[key: string]: string}) => void;
+  setColumnDisplayFormat?: (formats: {[key: string]: string}) => void;
   copyTableColumn: (column: string) => void;
   sortOrder?: number[] | null;
   showStats?: boolean;
@@ -404,8 +404,12 @@ interface DataTableState {
   showStats?: boolean;
 }
 
+const DUMMY_STYLE = {};
+
 DataTableFactory.deps = [HeaderCellFactory];
-function DataTableFactory(HeaderCell: ReturnType<typeof HeaderCellFactory>) {
+function DataTableFactory(
+  HeaderCell: ReturnType<typeof HeaderCellFactory>
+): React.ComponentType<DataTableProps> {
   class DataTable extends Component<DataTableProps, DataTableState> {
     static defaultProps = {
       dataContainer: null,
@@ -448,7 +452,6 @@ function DataTableFactory(HeaderCell: ReturnType<typeof HeaderCellFactory>) {
     componentWillUnmount() {
       this.hasMounted = false;
       window.removeEventListener('resize', this.scaleCellsToWidth);
-      // fix Warning: Can't perform a React state update on an unmounted component
     }
 
     root = createRef<HTMLDivElement>();
@@ -549,6 +552,8 @@ function DataTableFactory(HeaderCell: ReturnType<typeof HeaderCellFactory>) {
           props={props}
           toggleMoreOptions={toggleMoreOptions}
           moreOptionsColumn={moreOptionsColumn}
+          // pass dummy style to prevent warnings from react-virtualized Grid
+          style={DUMMY_STYLE}
         />
       );
       return HeaderCellRenderer;
@@ -699,7 +704,7 @@ function DataTableFactory(HeaderCell: ReturnType<typeof HeaderCellFactory>) {
     }
   }
 
-  return withTheme(DataTable) as React.ComponentType<DataTableProps>;
+  return withTheme(DataTable as React.ComponentType<DataTableProps>);
 }
 
 export default DataTableFactory;

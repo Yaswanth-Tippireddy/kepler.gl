@@ -26,12 +26,12 @@ import ArcLayerIcon from './arc-layer-icon';
 import {isLayerHoveredFromArrow, createGeoArrowPointVector, getFilteredIndex} from '../layer-utils';
 import {
   DEFAULT_LAYER_COLOR,
-  ColorRange,
   PROJECTED_PIXEL_SIZE_MULTIPLIER,
   ALL_FIELD_TYPES
 } from '@kepler.gl/constants';
 
 import {
+  ColorRange,
   RGBColor,
   Merge,
   VisConfigColorRange,
@@ -293,7 +293,7 @@ export default class ArcLayer extends Layer {
     return hasStart && hasNeibors;
   }
 
-  static findDefaultLayerProps({fields, fieldPairs = []}: KeplerTable): {
+  static findDefaultLayerProps({fieldPairs = []}: KeplerTable): {
     props: {color?: RGBColor; columns: ArcLayerColumnsConfig; label: string}[];
   } {
     if (fieldPairs.length < 2) {
@@ -463,7 +463,9 @@ export default class ArcLayer extends Layer {
   }
   /* eslint-enable complexity */
 
-  updateLayerMeta(dataContainer) {
+  updateLayerMeta(dataset: KeplerTable) {
+    const {dataContainer} = dataset;
+
     this.dataContainer = dataContainer;
 
     // get bounds from arcs
@@ -566,10 +568,14 @@ export default class ArcLayer extends Layer {
       objectInfo.index >= 0 &&
       this.dataContainer
     ) {
-      return {
-        index: objectInfo.index,
-        position: this.getPositionAccessor(this.dataContainer)(objectInfo)
-      };
+      // objectInfo.index can point to data of arcs created in neighbor mode, so get index to source data.
+      const hoveredObject = super.hasHoveredObject(objectInfo);
+      return hoveredObject
+        ? {
+            index: hoveredObject.index,
+            position: this.getPositionAccessor(this.dataContainer)({index: hoveredObject.index})
+          }
+        : null;
     }
 
     return super.hasHoveredObject(objectInfo);
@@ -584,9 +590,7 @@ export default class ArcLayer extends Layer {
   ) {
     // for arrow format, `object` is the Arrow row object Proxy,
     // and index is passed in `hoverInfo`.
-    const index = Boolean(this.geoArrowVector0)
-      ? hoverInfo?.index
-      : (object as {index: number}).index;
+    const index = this.geoArrowVector0 ? hoverInfo?.index : (object as {index: number}).index;
     if (index >= 0) {
       return dataContainer.row(index);
     }

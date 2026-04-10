@@ -3,6 +3,8 @@
 
 import esbuild from 'esbuild';
 import {replace} from 'esbuild-plugin-replace';
+import {dotenvRun} from '@dotenv-run/esbuild';
+import copyPlugin from 'esbuild-plugin-copy';
 
 import process from 'node:process';
 import fs from 'node:fs';
@@ -21,10 +23,8 @@ const EXTERNAL_DECK_SRC = join(LIB_DIR, 'deck.gl');
 // For debugging loaders.gl, load loaders.gl from external loaders.gl directory
 const EXTERNAL_LOADERS_SRC = join(LIB_DIR, 'loaders.gl');
 
-// For debugging hubble.gl, load hubble.gl from external hubble.gl directory
-const EXTERNAL_HUBBLE_SRC = join(LIB_DIR, '../../hubble.gl');
-
 const port = 8080;
+const NODE_ENV = JSON.stringify(process.env.NODE_ENV || 'production');
 
 // add alias to serve from kepler src, resolve libraries so there is only one copy of them
 const RESOLVE_LOCAL_ALIASES = {
@@ -33,6 +33,7 @@ const RESOLVE_LOCAL_ALIASES = {
   'react-redux': `${NODE_MODULES_DIR}/react-redux/lib`,
   'styled-components': `${NODE_MODULES_DIR}/styled-components`,
   'react-intl': `${NODE_MODULES_DIR}/react-intl`,
+  'react-palm': `${NODE_MODULES_DIR}/react-palm`,
   // Suppress useless warnings from react-date-picker's dep
   'tiny-warning': `${SRC_DIR}/utils/src/noop.ts`,
   // kepler.gl and loaders.gl need to use same apache-arrow
@@ -43,26 +44,45 @@ const config = {
   platform: 'browser',
   format: 'iife',
   logLevel: 'info',
-  loader: {'.js': 'jsx'},
+  loader: {
+    '.js': 'jsx',
+    '.css': 'css',
+    '.ttf': 'file',
+    '.woff': 'file',
+    '.woff2': 'file'
+  },
   entryPoints: ['src/main.js'],
   outfile: 'dist/bundle.js',
   bundle: true,
   define: {
-    NODE_ENV: JSON.stringify(process.env.NODE_ENV || 'production'),
-    'process.env.MapboxAccessToken': JSON.stringify(process.env.MapboxAccessToken), // eslint-disable-line
-    'process.env.DropboxClientId': JSON.stringify(process.env.DropboxClientId), // eslint-disable-line
-    'process.env.MapboxExportToken': JSON.stringify(process.env.MapboxExportToken), // eslint-disable-line
-    'process.env.CartoClientId': JSON.stringify(process.env.CartoClientId), // eslint-disable-line
-    'process.env.FoursquareClientId': JSON.stringify(process.env.FoursquareClientId), // eslint-disable-line
-    'process.env.FoursquareDomain': JSON.stringify(process.env.FoursquareDomain), // eslint-disable-line
-    'process.env.FoursquareAPIURL': JSON.stringify(process.env.FoursquareAPIURL), // eslint-disable-line
-    'process.env.FoursquareUserMapsURL': JSON.stringify(process.env.FoursquareUserMapsURL) // eslint-disable-line
+    NODE_ENV,
+    'process.env.MapboxAccessToken': JSON.stringify(process.env.MapboxAccessToken || ''),
+    'process.env.DropboxClientId': JSON.stringify(process.env.DropboxClientId || ''),
+    'process.env.MapboxExportToken': JSON.stringify(process.env.MapboxExportToken || ''),
+    'process.env.CartoClientId': JSON.stringify(process.env.CartoClientId || ''),
+    'process.env.FoursquareClientId': JSON.stringify(process.env.FoursquareClientId || ''),
+    'process.env.FoursquareDomain': JSON.stringify(process.env.FoursquareDomain || ''),
+    'process.env.FoursquareAPIURL': JSON.stringify(process.env.FoursquareAPIURL || ''),
+    'process.env.FoursquareUserMapsURL': JSON.stringify(process.env.FoursquareUserMapsURL || ''),
+    'process.env.NODE_DEBUG': JSON.stringify(false)
   },
   plugins: [
+    dotenvRun({
+      verbose: true,
+      environment: NODE_ENV,
+      root: '../../.env'
+    }),
     // automatically injected kepler.gl package version into the bundle
     replace({
       __PACKAGE_VERSION__: KeplerPackage.version,
       include: /constants\/src\/default-settings\.ts/
+    }),
+    copyPlugin({
+      resolveFrom: 'cwd',
+      assets: {
+        from: ['index.html'],
+        to: ['dist/index.html']
+      }
     })
   ]
 };
@@ -71,7 +91,7 @@ function addAliases(externals, args) {
   const resolveAlias = RESOLVE_LOCAL_ALIASES;
 
   // Combine flags
-  const useLocalDeck = args.includes('--env.deck') || args.includes('--env.hubble_src');
+  const useLocalDeck = args.includes('--env.deck');
   const useRepoDeck = args.includes('--env.deck_src');
 
   // resolve deck.gl from local dir
@@ -119,12 +139,6 @@ function addAliases(externals, args) {
     });
   }
 
-  if (args.includes('--env.hubble_src')) {
-    externals['hubble.gl'].forEach(mdl => {
-      resolveAlias[`@hubble.gl/${mdl}`] = `${EXTERNAL_HUBBLE_SRC}/modules/${mdl}/src`;
-    });
-  }
-
   return resolveAlias;
 }
 
@@ -144,7 +158,7 @@ function openURL(url) {
 (async () => {
   // local dev
 
-  const modules = ['@deck.gl', '@loaders.gl', '@luma.gl', '@probe.gl', '@hubble.gl'];
+  const modules = ['@deck.gl', '@loaders.gl', '@luma.gl', '@probe.gl'];
   const loadAllDirs = modules.map(
     dir =>
       new Promise(success => {
@@ -168,8 +182,7 @@ function openURL(url) {
     'deck.gl': results[0],
     'loaders.gl': results[1],
     'luma.gl': results[2],
-    'probe.gl': results[3],
-    'hubble.gl': results[4]
+    'probe.gl': results[3]
   }));
 
   const localAliases = addAliases(externals, args);
@@ -178,9 +191,14 @@ function openURL(url) {
     await esbuild
       .build({
         ...config,
-
         minify: true,
-        sourcemap: false
+        sourcemap: false,
+        define: {
+          ...config.define,
+          'process.env.NODE_ENV': '"production"'
+        },
+        drop: ['console', 'debugger'],
+        treeShaking: true
       })
       .catch(e => {
         console.error(e);
@@ -195,7 +213,8 @@ function openURL(url) {
         minify: false,
         sourcemap: true,
         // add alias to resolve libraries so there is only one copy of them
-        ...(process.env.NODE_ENV === 'local' ? {alias: localAliases} : {}),
+        // always alias to avoid duplicate Reacts
+        alias: localAliases,
         banner: {
           js: `new EventSource('/esbuild').addEventListener('change', () => location.reload());`
         }

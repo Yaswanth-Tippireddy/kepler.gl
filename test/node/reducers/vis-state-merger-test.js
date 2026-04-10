@@ -2,9 +2,9 @@
 // Copyright contributors to the kepler.gl project
 
 import test from 'tape';
-import cloneDeep from 'lodash.clonedeep';
+import cloneDeep from 'lodash/cloneDeep';
 import Task, {withTask, drainTasksForTesting, succeedTaskInTest} from 'react-palm/tasks';
-import CloneDeep from 'lodash.clonedeep';
+import CloneDeep from 'lodash/cloneDeep';
 
 import keplerGlReducer, {
   mergeFilters,
@@ -2217,7 +2217,7 @@ test('VisStateMerger -> asynс mergers', t => {
 
   t.ok(nextState.test.visState.datasets[testCsvDataId], 'should add csv data');
   const tasks = drainTasksForTesting();
-  t.equal(tasks.length, 1, 'should create 1 task');
+  t.equal(tasks.length, 1, 'Should create one fit bounds task');
   t.equal(tasks[0].type, 'MOCK_MERGE_TASK', 'should create merger task');
 
   // add another dataset will async merger is in process

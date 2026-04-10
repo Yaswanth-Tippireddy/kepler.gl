@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright contributors to the kepler.gl project
 
+import {Buffer} from 'buffer';
 import {Feature, Position, BBox} from 'geojson';
 import normalize from '@mapbox/geojson-normalize';
 import bbox from '@turf/bbox';
@@ -13,7 +14,7 @@ import {binaryToGeometry} from '@loaders.gl/gis';
 import {BinaryFeatureCollection} from '@loaders.gl/schema';
 import {DataContainerInterface, getSampleData} from '@kepler.gl/utils';
 import {ALL_FIELD_TYPES} from '@kepler.gl/constants';
-import {LayerColumns} from '@kepler.gl/types';
+import {LayerColumns, ProtoDatasetField} from '@kepler.gl/types';
 import {KeplerTable} from '@kepler.gl/table';
 
 import {GeojsonLayerMetaProps, assignPointPairToLayerColumn} from '../layer-utils';
@@ -43,7 +44,39 @@ type FeatureTypeMap = {
 
 /* eslint-enable */
 
+/**
+ * Returns true if the field has geoarrow extension.
+ * @param geoField A field to test.
+ * @returns
+ */
+export function fieldIsGeoArrow(geoField?: ProtoDatasetField | null): boolean {
+  return Boolean(geoField?.metadata?.get('ARROW:extension:name'));
+}
+
 export function parseGeoJsonRawFeature(rawFeature: unknown): Feature | null {
+  const properties = null; // help ensure that properties is present on the returned geojson feature
+  // Support WKB geometry provided as binary (e.g., from Parquet/GeoParquet)
+  if (rawFeature instanceof Uint8Array || rawFeature instanceof ArrayBuffer) {
+    try {
+      const binaryInput =
+        rawFeature instanceof ArrayBuffer
+          ? rawFeature
+          : (rawFeature as Uint8Array).buffer.slice(
+              (rawFeature as Uint8Array).byteOffset,
+              (rawFeature as Uint8Array).byteOffset + (rawFeature as Uint8Array).byteLength
+            );
+      const binaryGeo = parseSync(binaryInput as ArrayBuffer, WKBLoader);
+      // @ts-expect-error loaders.gl binary type to GeoJSON geometry
+      const parsedGeo = binaryToGeometry(binaryGeo);
+      const normalized = normalize(parsedGeo);
+      if (!normalized || !Array.isArray(normalized.features) || !normalized.features.length) {
+        return null;
+      }
+      return {properties, ...normalized.features[0]};
+    } catch (e) {
+      return null;
+    }
+  }
   if (typeof rawFeature === 'object') {
     // Support GeoJson feature as object
     // probably need to normalize it as well
@@ -53,9 +86,12 @@ export function parseGeoJsonRawFeature(rawFeature: unknown): Feature | null {
       return null;
     }
 
-    return normalized.features[0];
+    return {properties, ...normalized.features[0]};
   } else if (typeof rawFeature === 'string') {
-    return parseGeometryFromString(rawFeature);
+    const parsedGeometry = parseGeometryFromString(rawFeature);
+    if (!parsedGeometry) return null;
+    // @ts-expect-error verify whether parsedGeometry always contains properties
+    return {properties, ...parsedGeometry};
   } else if (Array.isArray(rawFeature)) {
     // Support GeoJson  LineString as an array of points
     return {
@@ -65,7 +101,7 @@ export function parseGeoJsonRawFeature(rawFeature: unknown): Feature | null {
         coordinates: rawFeature.map(pts => [pts[1], pts[0]]),
         type: 'LineString'
       },
-      properties: {}
+      properties
     };
   }
 
@@ -257,8 +293,11 @@ export function getGeojsonBounds(features: GeojsonDataMaps = []): BBox | null {
   const maxCount = 10000;
   const samples = features.length > maxCount ? getSampleData(features, maxCount) : features;
 
+  const validSingleGeometry = geom => geom.coordinates && geom.coordinates.length;
+  const validGeometryCollection = geom =>
+    geom.geometries && geom.geometries.length && geom.geometries.every(validSingleGeometry);
   const nonEmpty = samples.filter(
-    d => d && d.geometry && d.geometry.coordinates && d.geometry.coordinates.length
+    d => d && d.geometry && (validSingleGeometry(d.geometry) || validGeometryCollection(d.geometry))
   );
 
   try {
@@ -321,7 +360,14 @@ export function groupColumnsAsGeoJson(
   for (let index = 0; index < dataContainer.numRows(); index++) {
     // note: can materialize the row
     const datum = dataContainer.rowAsArray(index);
-    const id = datum[columns.id.fieldIdx];
+    // Convert id to string to ensure consistent object key behavior
+    // (numeric keys are sorted differently than string keys in Object.entries)
+    const rawId = datum[columns.id.fieldIdx];
+    if (rawId == null) {
+      // Skip rows with missing IDs to avoid grouping them under "null"/"undefined"
+      continue;
+    }
+    const id = String(rawId);
     const lat = datum[columns.lat.fieldIdx];
     const lon = datum[columns.lng.fieldIdx];
     const altitude = columns.altitude ? datum[columns.altitude.fieldIdx] : 0;
@@ -380,8 +426,8 @@ export function detectTableColumns(
   }
   // find sort by field
   const sortByFieldIdx = fields.findIndex(f => f.type === ALL_FIELD_TYPES.timestamp);
-  // find id column
-  const idFieldIdx = fields.findIndex(f => f.name?.toLowerCase().match(/^(id|uuid)$/g));
+  // find id column: support id, uuid, xxx_id and xxx_uuid columns
+  const idFieldIdx = fields.findIndex(f => f.name?.toLowerCase().match(/^(id|uuid|._id|._uuid)$/g));
 
   if (sortByFieldIdx > -1 && idFieldIdx > -1) {
     const pointColumns = assignPointPairToLayerColumn(fieldPairs[0], true);

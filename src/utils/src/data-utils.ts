@@ -5,6 +5,8 @@ import assert from 'assert';
 import {format as d3Format} from 'd3-format';
 import moment from 'moment-timezone';
 
+import {parseGeometryFromArrow} from '@loaders.gl/arrow';
+
 import {
   ALL_FIELD_TYPES,
   TOOLTIP_FORMATS,
@@ -13,15 +15,68 @@ import {
   TooltipFormat
 } from '@kepler.gl/constants';
 import {notNullorUndefined} from '@kepler.gl/common-utils';
-import {Field, Millisecond} from '@kepler.gl/types';
+import {Field, Millisecond, ProtoDatasetField} from '@kepler.gl/types';
 
 import {snapToMarks} from './plot';
 import {isPlainObject} from './utils';
+import {isArrowVector} from './arrow-data-container';
 
-export type FieldFormatter = (value: any) => string;
+export type FieldFormatter = (value: any, field?: ProtoDatasetField) => string;
+
+// We need threat latitude differently otherwise mercator project view throws
+// a projection matrix error
+// Uncaught Error: Pixel project matrix not invertible
+// at WebMercatorViewport16.Viewport6 (viewport.js:81:13)
+export const MAX_LATITUDE = 89.9;
+export const MIN_LATITUDE = -89.9;
+export const MAX_LONGITUDE = 180;
+export const MIN_LONGITUDE = -180;
+
+/**
+ * Validates a latitude value.
+ * Ensures that the latitude is within the defined minimum and maximum latitude bounds.
+ * If the value is out of bounds, it returns the nearest bound value.
+ * @param latitude - The latitude value to validate.
+ * @returns The validated latitude value.
+ */
+export function validateLatitude(latitude: number | undefined): number {
+  return validateCoordinate(latitude ?? 0, MIN_LATITUDE, MAX_LATITUDE);
+}
+
+/**
+ * Validates a longitude value.
+ * Ensures that the longitude is within the defined minimum and maximum longitude bounds.
+ * If the value is out of bounds, it returns the nearest bound value.
+ * @param longitude - The longitude value to validate.
+ * @returns The validated longitude value.
+ */
+export function validateLongitude(longitude: number | undefined): number {
+  return validateCoordinate(longitude ?? 0, MIN_LONGITUDE, MAX_LONGITUDE);
+}
+
+/**
+ * Validates a coordinate value.
+ * Ensures that the value is within the specified minimum and maximum bounds.
+ * If the value is out of bounds, it returns the nearest bound value.
+ * @param value - The coordinate value to validate.
+ * @param minValue - The minimum bound for the value.
+ * @param maxValue - The maximum bound for the value.
+ * @returns The validated coordinate value.
+ */
+export function validateCoordinate(value: number, minValue: number, maxValue: number): number {
+  if (value <= minValue) {
+    return minValue;
+  }
+  if (value >= maxValue) {
+    return maxValue;
+  }
+
+  return value;
+}
 
 /**
  * simple getting unique values of an array
+ * Note: filters out null and undefined values
  *
  * @param values
  * @returns unique values
@@ -179,7 +234,7 @@ export function getRoundingDecimalFromStep(step: number): number {
  */
 export function normalizeSliderValue(
   val: number,
-  minValue: number,
+  minValue: number | undefined,
   step: number,
   marks?: number[] | null
 ): number {
@@ -198,7 +253,7 @@ export function normalizeSliderValue(
  * @param val
  * @returns - rounded number
  */
-export function roundValToStep(minValue: number, step: number, val: number): number {
+export function roundValToStep(minValue: number | undefined, step: number, val: number): number {
   if (!isNumber(step) || !isNumber(minValue)) {
     return val;
   }
@@ -233,6 +288,17 @@ export const defaultFormatter: FieldFormatter = v => (notNullorUndefined(v) ? St
 
 export const floatFormatter = v => (isNumber(v) ? String(roundToFour(v)) : '');
 
+/**
+ * Transforms a WKB in Uint8Array form into a hex WKB string.
+ * @param uint8Array WKB in Uint8Array form.
+ * @returns hex WKB string.
+ */
+export function uint8ArrayToHex(data: Uint8Array): string {
+  return Array.from(data)
+    .map(byte => (byte as any).toString(16).padStart(2, '0'))
+    .join('');
+}
+
 export const FIELD_DISPLAY_FORMAT: {
   [key: string]: FieldFormatter;
 } = {
@@ -250,20 +316,47 @@ export const FIELD_DISPLAY_FORMAT: {
       : Array.isArray(d)
       ? `[${String(d)}]`
       : '',
-  [ALL_FIELD_TYPES.geoarrow]: d => d,
-  [ALL_FIELD_TYPES.object]: JSON.stringify,
-  [ALL_FIELD_TYPES.array]: JSON.stringify,
+  [ALL_FIELD_TYPES.geoarrow]: (data, field) => {
+    if (isArrowVector(data)) {
+      try {
+        const encoding = field?.metadata?.get('ARROW:extension:name');
+        if (encoding) {
+          const geometry = parseGeometryFromArrow(data, encoding);
+          return JSON.stringify(geometry);
+        }
+      } catch (error) {
+        // ignore for now
+      }
+    } else if (data instanceof Uint8Array) {
+      return uint8ArrayToHex(data);
+    }
+    return data;
+  },
+  [ALL_FIELD_TYPES.object]: (value: any) => {
+    try {
+      return JSON.stringify(value);
+    } catch (e) {
+      return String(value);
+    }
+  },
+  [ALL_FIELD_TYPES.array]: d => JSON.stringify(d),
   [ALL_FIELD_TYPES.h3]: defaultFormatter
 };
 
 /**
  * Parse field value and type and return a string representation
  */
-export const parseFieldValue = (value: any, type: string): string => {
+export const parseFieldValue = (value: any, type: string, field?: Field): string => {
   if (!notNullorUndefined(value)) {
     return '';
   }
-  return FIELD_DISPLAY_FORMAT[type] ? FIELD_DISPLAY_FORMAT[type](value) : String(value);
+  // BigInt values cannot be serialized with JSON.stringify() directly
+  // We need to explicitly convert them to strings using .toString()
+  // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt#use_within_json
+  if (typeof value === 'bigint') {
+    return value.toString();
+  }
+  return FIELD_DISPLAY_FORMAT[type] ? FIELD_DISPLAY_FORMAT[type](value, field) : String(value);
 };
 
 /**
@@ -273,7 +366,7 @@ export const parseFieldValue = (value: any, type: string): string => {
  * @param field
  */
 export function getFormatter(
-  format: string | Record<string, string> | null,
+  format?: string | Record<string, string> | null,
   field?: Field
 ): FieldFormatter {
   if (!format) {

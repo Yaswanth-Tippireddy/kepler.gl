@@ -26,14 +26,16 @@ import TextLabelPanelFactory from './text-label-panel';
 import VisConfigSliderFactory from './vis-config-slider';
 import VisConfigSwitchFactory from './vis-config-switch';
 
-import {capitalizeFirstLetter} from '@kepler.gl/utils';
+import RasterTileLayerConfiguratorFactory from './raster-tile-layer-configurator';
+import VectorTileLayerConfiguratorFactory from './vector-tile-layer-configurator';
 
+import {ActionHandler, toggleModal} from '@kepler.gl/actions';
 import {AGGREGATION_TYPE_OPTIONS, LAYER_TYPES} from '@kepler.gl/constants';
 import {AggregationLayer, Layer, LayerBaseConfig, VisualChannel} from '@kepler.gl/layers';
 
-import {ActionHandler, toggleModal} from '@kepler.gl/actions';
-import {Datasets} from '@kepler.gl/table';
+import {matchDatasetType, Datasets} from '@kepler.gl/table';
 import {ColorUI, LayerVisConfig, NestedPartial} from '@kepler.gl/types';
+import {capitalizeFirstLetter} from '@kepler.gl/utils';
 
 type LayerConfiguratorProps = {
   layer: Layer;
@@ -87,11 +89,11 @@ const StyledLayerVisualConfigurator = styled.div.attrs({
 `;
 
 export const getLayerFields = (datasets: Datasets, layer: Layer) =>
-  layer.config?.dataId && datasets[layer.config.dataId] ? datasets[layer.config.dataId].fields : [];
+  datasets[layer.config?.dataId || ''] ? datasets[layer.config.dataId].fields : [];
 
 /** Return any to be able to customize the Dataset entity */
 export const getLayerDataset = (datasets: Datasets, layer: Layer): any =>
-  layer.config?.dataId && datasets[layer.config.dataId] ? datasets[layer.config.dataId] : null;
+  datasets[layer.config?.dataId || ''];
 
 export const getLayerConfiguratorProps = (props: LayerConfiguratorProps) => ({
   layer: props.layer,
@@ -109,6 +111,7 @@ export const getVisConfiguratorProps = (props: LayerConfiguratorProps) => ({
 
 export const getLayerChannelConfigProps = (props: LayerConfiguratorProps) => ({
   layer: props.layer,
+  dataset: getLayerDataset(props.datasets, props.layer),
   fields: getLayerFields(props.datasets, props.layer),
   onChange: props.updateLayerVisualChannelConfig,
   setColorUI: props.updateLayerColorUI
@@ -126,7 +129,9 @@ LayerConfiguratorFactory.deps = [
   LayerColorSelectorFactory,
   LayerColorRangeSelectorFactory,
   ArcLayerColorSelectorFactory,
-  AggrScaleSelectorFactory
+  AggrScaleSelectorFactory,
+  VectorTileLayerConfiguratorFactory,
+  RasterTileLayerConfiguratorFactory
 ];
 
 export default function LayerConfiguratorFactory(
@@ -141,23 +146,31 @@ export default function LayerConfiguratorFactory(
   LayerColorSelector: ReturnType<typeof LayerColorSelectorFactory>,
   LayerColorRangeSelector: ReturnType<typeof LayerColorRangeSelectorFactory>,
   ArcLayerColorSelector: ReturnType<typeof ArcLayerColorSelectorFactory>,
-  AggrScaleSelector: ReturnType<typeof AggrScaleSelectorFactory>
+  AggrScaleSelector: ReturnType<typeof AggrScaleSelectorFactory>,
+  VectorTileLayerConfigurator: ReturnType<typeof VectorTileLayerConfiguratorFactory>,
+  RasterTileLayerConfigurator: ReturnType<typeof RasterTileLayerConfiguratorFactory>
 ): React.ComponentType<LayerConfiguratorProps> {
   class LayerConfigurator extends Component<LayerConfiguratorProps> {
     _renderPointLayerConfig(props) {
-      return this._renderScatterplotLayerConfig(props);
+      return this._renderScatterplotLayerConfig(props, true);
     }
 
     _renderIconLayerConfig(props) {
-      return this._renderScatterplotLayerConfig(props);
+      return this._renderScatterplotLayerConfig(props, false);
     }
 
-    _renderScatterplotLayerConfig({
-      layer,
-      visConfiguratorProps,
-      layerChannelConfigProps,
-      layerConfiguratorProps
-    }) {
+    _renderVectorTileLayerConfig(props) {
+      return <VectorTileLayerConfigurator {...props} />;
+    }
+
+    _renderRasterTileLayerConfig(props) {
+      return <RasterTileLayerConfigurator {...props} />;
+    }
+
+    _renderScatterplotLayerConfig(
+      {layer, visConfiguratorProps, layerChannelConfigProps, layerConfiguratorProps},
+      showInteractionControls
+    ) {
       return (
         <StyledLayerVisualConfigurator>
           {/* Fill Color */}
@@ -252,40 +265,37 @@ export default function LayerConfiguratorFactory(
           />
 
           {/* Interaction */}
-          <LayerConfigGroup label={'layer.interaction'} collapsible>
-            <VisConfigSwitch {...layer.visConfigSettings.allowHover} {...visConfiguratorProps} />
-            <ConfigGroupCollapsibleContent>
-              <VisConfigSwitch
-                {...layer.visConfigSettings.showNeighborOnHover}
-                {...visConfiguratorProps}
-              />
-              <VisConfigSwitch
-                {...layer.visConfigSettings.showHighlightColor}
-                {...visConfiguratorProps}
-              />
-            </ConfigGroupCollapsibleContent>
-          </LayerConfigGroup>
+          {showInteractionControls ? (
+            <LayerConfigGroup label={'layer.interaction'} collapsible>
+              <VisConfigSwitch {...layer.visConfigSettings.allowHover} {...visConfiguratorProps} />
+              <ConfigGroupCollapsibleContent>
+                <VisConfigSwitch
+                  {...layer.visConfigSettings.showNeighborOnHover}
+                  {...visConfiguratorProps}
+                />
+                <VisConfigSwitch
+                  {...layer.visConfigSettings.showHighlightColor}
+                  {...visConfiguratorProps}
+                />
+              </ConfigGroupCollapsibleContent>
+            </LayerConfigGroup>
+          ) : null}
         </StyledLayerVisualConfigurator>
       );
     }
 
-    _renderClusterLayerConfig({
-      layer,
-      visConfiguratorProps,
-      layerConfiguratorProps,
-      layerChannelConfigProps
-    }) {
+    _renderClusterLayerConfig({layer, visConfiguratorProps, layerChannelConfigProps}) {
       return (
         <StyledLayerVisualConfigurator>
           {/* Color */}
           <LayerConfigGroup label={'layer.color'} collapsible>
             <LayerColorRangeSelector {...visConfiguratorProps} />
+            <AggrScaleSelector {...layerChannelConfigProps} channel={layer.visualChannels.color} />
             <ChannelByValueSelector
               channel={layer.visualChannels.color}
               {...layerChannelConfigProps}
             />
             <ConfigGroupCollapsibleContent>
-              <AggrScaleSelector {...layerConfiguratorProps} channel={layer.visualChannels.color} />
               {layer.visConfigSettings.colorAggregation.condition(layer.config) ? (
                 <AggregationTypeSelector
                   {...layer.visConfigSettings.colorAggregation}
@@ -345,12 +355,7 @@ export default function LayerConfiguratorFactory(
       return this._renderAggregationLayerConfig(props);
     }
 
-    _renderAggregationLayerConfig({
-      layer,
-      visConfiguratorProps,
-      layerConfiguratorProps,
-      layerChannelConfigProps
-    }) {
+    _renderAggregationLayerConfig({layer, visConfiguratorProps, layerChannelConfigProps}) {
       const {config} = layer;
       const {
         visConfig: {enable3d, fixedHeight}
@@ -366,12 +371,10 @@ export default function LayerConfiguratorFactory(
               channel={layer.visualChannels.color}
               {...layerChannelConfigProps}
             />
-
+            <AggrScaleSelector {...layerChannelConfigProps} channel={layer.visualChannels.color} />
             <LayerColorRangeSelector {...visConfiguratorProps} />
 
             <ConfigGroupCollapsibleContent>
-              <AggrScaleSelector {...layerConfiguratorProps} channel={layer.visualChannels.color} />
-
               {layer.visConfigSettings.colorAggregation.condition(layer.config) ? (
                 <AggregationTypeSelector
                   {...layer.visConfigSettings.colorAggregation}
@@ -426,7 +429,7 @@ export default function LayerConfiguratorFactory(
                   />
                 ) : null}
                 <AggrScaleSelector
-                  {...layerConfiguratorProps}
+                  {...layerChannelConfigProps}
                   channel={layer.visualChannels.size}
                   label={'Height Scale'}
                 />
@@ -1021,6 +1024,70 @@ export default function LayerConfiguratorFactory(
       );
     }
 
+    _renderTile3dLayerConfig({layer, visConfiguratorProps, layerConfiguratorProps}) {
+      return (
+        <StyledLayerVisualConfigurator>
+          <LayerConfigGroup label={'layer.appearance'}>
+            <LayerColorSelector {...layerConfiguratorProps} />
+            <VisConfigSlider {...layer.visConfigSettings.opacity} {...visConfiguratorProps} />
+            <VisConfigSlider {...layer.visConfigSettings.pointSize} {...visConfiguratorProps} />
+          </LayerConfigGroup>
+        </StyledLayerVisualConfigurator>
+      );
+    }
+
+    _renderWmsLayerConfig({
+      layer,
+      visConfiguratorProps,
+      layerChannelConfigProps,
+      layerConfiguratorProps
+    }) {
+      return (
+        <StyledLayerVisualConfigurator>
+          <LayerConfigGroup label={'layer.service'}>
+            <PanelLabel>
+              <FormattedMessage id={'layer.layer'} />
+            </PanelLabel>
+            <ItemSelector
+              selectedItems={layer.config.visConfig.wmsLayer}
+              options={layerChannelConfigProps.dataset.metadata.layers}
+              displayOption="title"
+              getOptionValue="name"
+              multiSelect={false}
+              searchable={false}
+              onChange={value => {
+                if (!value) {
+                  return;
+                }
+                const selectedLayer = layerChannelConfigProps.dataset.metadata.layers.find(
+                  l => l.name === value
+                );
+                if (!selectedLayer) {
+                  return;
+                }
+
+                layerConfiguratorProps.onChange({
+                  visConfig: {
+                    ...layer.config.visConfig,
+                    wmsLayer: selectedLayer
+                  }
+                });
+              }}
+            />
+          </LayerConfigGroup>
+          <LayerConfigGroup label={'layer.appearance'}>
+            <VisConfigSlider {...layer.visConfigSettings.opacity} {...visConfiguratorProps} />
+            <VisConfigSwitch
+              label={'layerVisConfigs.transparentBackground'}
+              {...layer.visConfigSettings.transparent}
+              {...visConfiguratorProps}
+              property="transparent"
+            />
+          </LayerConfigGroup>
+        </StyledLayerVisualConfigurator>
+      );
+    }
+
     handleSelectColumnMode = (key: string) => {
       const {updateLayerConfig} = this.props;
       updateLayerConfig({columnMode: key});
@@ -1047,11 +1114,17 @@ export default function LayerConfiguratorFactory(
       const dataset = getLayerDataset(datasets, layer);
       const renderTemplate = layer.type && `_render${capitalizeFirstLetter(layer.type)}LayerConfig`;
 
+      // show only datasets that can be used by the layer
+      const sourceDataSelectorOptions = Object.keys(datasets).reduce(
+        (acc, id) => (matchDatasetType(datasets[id], layer) ? {...acc, [id]: datasets[id]} : acc),
+        {}
+      );
+
       return (
         <StyledLayerConfigurator>
           {layer.layerInfoModal && !layer.supportedColumnModes ? (
-            // @ts-expect-error wrong handler type?
-            <HowToButton onClick={() => openModal(layer.layerInfoModal)} />
+            // TODO figure out handler type. String or return type of layer.layerInfoModal ?
+            <HowToButton onClick={() => openModal(layer.layerInfoModal as any)} />
           ) : null}
           <LayerConfigGroup label={'layer.basic'} collapsible expanded={!layer.hasAllColumns()}>
             <LayerTypeSelector
@@ -1063,7 +1136,7 @@ export default function LayerConfiguratorFactory(
             />
             <ConfigGroupCollapsibleContent>
               <SourceDataSelector
-                datasets={datasets}
+                datasets={sourceDataSelectorOptions}
                 id={layer.id}
                 dataId={config.dataId}
                 // @ts-ignore
@@ -1074,8 +1147,8 @@ export default function LayerConfiguratorFactory(
                 supportedColumnModes={layer.supportedColumnModes}
                 id={layer.id}
                 layerConfig={layer.config}
-                // @ts-expect-error wrong handler type?
-                openModal={openModal}
+                // TODO figure out handler type. String or return type of layer.layerInfoModal ?
+                openModal={openModal as any}
                 updateLayerConfig={updateLayerConfig}
                 updateLayerType={updateLayerType}
                 fields={fields}

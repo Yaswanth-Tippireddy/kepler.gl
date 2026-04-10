@@ -4,6 +4,7 @@
 import React, {FC, useCallback, useState, ComponentType} from 'react';
 import styled from 'styled-components';
 import {rgb} from 'd3-color';
+import {format as d3Format} from 'd3-format';
 import {useIntl} from 'react-intl';
 import ColorLegendFactory, {LegendRowFactory} from '../common/color-legend';
 import RadiusLegend from '../common/radius-legend';
@@ -12,7 +13,7 @@ import {FormattedMessage} from '@kepler.gl/localization';
 import {Layer, LayerBaseConfig, VisualChannel, VisualChannelDescription} from '@kepler.gl/layers';
 import {LayerVisConfig, MapState, RGBColor} from '@kepler.gl/types';
 import {getDistanceScales} from 'viewport-mercator-project';
-import {ArrowDown, ArrowRight} from '../common/icons';
+import {ArrowDown, ArrowRight, EyeSeen, EyeUnseen} from '../common/icons';
 import PanelHeaderActionFactory from '../side-panel/panel-header-action';
 
 interface StyledMapControlLegendProps {
@@ -69,6 +70,26 @@ export const StyledMapControlLegend = styled.div<StyledMapControlLegendProps>`
 
   .legend--layer_color-legend {
     margin-top: 6px;
+  }
+`;
+
+const StyledLegendHeaderRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const StyledVisibilityToggle = styled.div<{isVisible: boolean}>`
+  cursor: pointer;
+  color: ${props => (props.isVisible ? props.theme.textColor : props.theme.subtextColor)};
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+  opacity: ${props => (props.isVisible ? 1 : 0.5)};
+
+  &:hover {
+    color: ${props => props.theme.textColorHl};
+    opacity: 1;
   }
 `;
 
@@ -201,9 +222,12 @@ export function LayerColorLegendFactory(
                   fieldType={(colorField && colorField.type) || 'real'}
                   range={colorRange}
                   onUpdateColorLegend={onUpdateColorLegend}
-                  disableEdit={disableEdit}
+                  disableEdit={disableEdit || Boolean(isExport)}
                   isFixed={isFixed}
                   mapState={mapState}
+                  labelFormat={
+                    colorField?.displayFormat ? d3Format(colorField?.displayFormat) : null
+                  }
                 />
               ) : (
                 <SingleColorLegend
@@ -295,16 +319,42 @@ export type LayerLegendHeaderProps = {
   options?: {
     showLayerName?: boolean;
   };
+  isExport?: boolean;
+  onToggleLayerVisibility?: (layer: Layer) => void;
 };
 
 const isRadiusChannel = visualChannel =>
   [CHANNEL_SCALES.radius].includes(visualChannel.channelScaleType);
 
 export function LayerLegendHeaderFactory() {
-  const LayerLegendHeader: React.FC<LayerLegendHeaderProps> = ({options, layer}) => {
-    return options?.showLayerName !== false ? (
-      <div className="legend--layer_name">{layer.config.label}</div>
-    ) : null;
+  const LayerLegendHeader: React.FC<LayerLegendHeaderProps> = ({
+    options,
+    layer,
+    onToggleLayerVisibility
+  }) => {
+    const isVisible = layer.config.isVisible;
+    const onToggle = useCallback(() => {
+      if (onToggleLayerVisibility) {
+        onToggleLayerVisibility(layer);
+      }
+    }, [layer, onToggleLayerVisibility]);
+
+    if (options?.showLayerName === false) {
+      return null;
+    }
+
+    return (
+      <StyledLegendHeaderRow>
+        <div className="legend--layer_name" style={{opacity: isVisible ? 1 : 0.5}}>
+          {layer.config.label}
+        </div>
+        {onToggleLayerVisibility ? (
+          <StyledVisibilityToggle isVisible={isVisible} onClick={onToggle}>
+            {isVisible ? <EyeSeen height="12px" /> : <EyeUnseen height="12px" />}
+          </StyledVisibilityToggle>
+        ) : null}
+      </StyledLegendHeaderRow>
+    );
   };
   return LayerLegendHeader;
 }
@@ -340,7 +390,7 @@ export function LayerLegendContentFactory(
   }) => {
     const visualChannels = layer.getLegendVisualChannels();
     const channelKeys = Object.values(visualChannels);
-    const colorChannels = channelKeys.filter(isColorChannel);
+    const colorChannels = channelKeys.filter(isColorChannel) as VisualChannel[];
     const nonColorChannels = channelKeys.filter(vc => !isColorChannel(vc));
     const width = containerW - 2 * DIMENSIONS.mapControl.padding;
 
@@ -372,7 +422,7 @@ export function LayerLegendContentFactory(
             actionIcons={actionIcons}
           />
         ))}
-        {nonColorChannels.map(visualChannel => {
+        {nonColorChannels.map((visualChannel: VisualChannel) => {
           const matchCondition = !visualChannel.condition || visualChannel.condition(layer.config);
           const enabled = layer.config[visualChannel.field] || visualChannel.defaultMeasure;
 
@@ -416,7 +466,8 @@ export type MapLegendProps = {
   disableEdit?: boolean;
   isExport?: boolean;
   onLayerVisConfigChange?: (oldLayer: Layer, newVisConfig: Partial<LayerVisConfig>) => void;
-  actionIcons: MapLegendIcons;
+  onToggleLayerVisibility?: (layer: Layer) => void;
+  actionIcons?: MapLegendIcons;
 };
 
 MapLegendFactory.deps = [LayerLegendHeaderFactory, LayerLegendContentFactory];
@@ -433,17 +484,10 @@ function MapLegendFactory(
     disableEdit,
     isExport,
     onLayerVisConfigChange,
+    onToggleLayerVisibility,
     actionIcons = defaultActionIcons
   }) => (
-    <div
-      className="map-legend"
-      {...(mapState?.height && {
-        style: {
-          /* subtracting rough size of 4 map control buttons and padding */
-          maxHeight: mapState.height - (isExport ? 0 : 250)
-        }
-      })}
-    >
+    <div className="map-legend">
       {layers.map((layer, index) => {
         if (!layer.isValidToSave() || layer.config.hidden) {
           return null;
@@ -457,7 +501,12 @@ function MapLegendFactory(
             key={index}
             width={containerW}
           >
-            <LayerLegendHeader options={options} layer={layer} />
+            <LayerLegendHeader
+              isExport={isExport}
+              options={options}
+              layer={layer}
+              onToggleLayerVisibility={onToggleLayerVisibility}
+            />
             <LayerLegendContent
               containerW={containerW}
               layer={layer}

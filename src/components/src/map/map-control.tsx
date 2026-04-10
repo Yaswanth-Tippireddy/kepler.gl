@@ -18,14 +18,14 @@ import {Datasets} from '@kepler.gl/table';
 import {MapStateActions, UIStateActions} from '@kepler.gl/actions';
 
 interface StyledMapControlProps {
-  top?: number;
+  $top?: number;
 }
 
 const StyledMapControl = styled.div<StyledMapControlProps>`
   right: 0;
   padding: ${props => props.theme.mapControl.padding}px;
   z-index: 10;
-  margin-top: ${props => props.top || 0}px;
+  margin-top: ${props => props.$top || 0}px;
   position: absolute;
   display: grid;
   row-gap: 8px;
@@ -62,12 +62,16 @@ export type MapControlProps = {
   onSetEditorMode: (mode: string) => void;
   onToggleEditorVisibility: () => void;
   onLayerVisConfigChange: (oldLayer: Layer, newVisConfig: Partial<LayerVisConfig>) => void;
+  onToggleLayerVisibility?: (layer: Layer) => void;
   top: number;
   onSetLocale: typeof UIStateActions.setLocale;
   availableLocales: string[];
   locale: string;
   logoComponent?: React.FC | React.ReactNode;
   isExport?: boolean;
+
+  setMapControlSettings: typeof UIStateActions.setMapControlSettings;
+  activeSidePanel: string | null;
 
   // optional
   mapState?: MapState;
@@ -122,7 +126,7 @@ function MapControlFactory(
       ...restProps
     };
     return (
-      <StyledMapControl className="map-control" top={top}>
+      <StyledMapControl className="map-control" $top={top}>
         {actionComponents.map((ActionComponent, index) => (
           <ActionComponent key={index} className="map-control-action" {...actionComponentProps} />
         ))}

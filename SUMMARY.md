@@ -1,6 +1,7 @@
 # Table of contents
 
 * [Welcome](README.md)
+* [What's new?](docs/release-notes.md)
 * [Docs](docs/README.md)
   * [User guides](docs/user-guides/README.md)
     * [Get Started](docs/user-guides/j-get-started.md)
@@ -24,6 +25,9 @@
       * [Heatmap](docs/user-guides/c-types-of-layers/i-heatmap.md)
       * [Arc](docs/user-guides/c-types-of-layers/b-arc.md)
       * [Trip layer](docs/user-guides/c-types-of-layers/k-trip.md)
+      * [Vector Tile Layer](docs/user-guides/c-types-of-layers/m-vector-tile-layer.md)
+      * [Raster Tile layer](docs/user-guides/c-types-of-layers/n-raster-tile-layer.md)
+      * [WMS layer](docs/user-guides/c-types-of-layers/o-wms-layer.md)
     * [Layer Attributes](docs/user-guides/d-layer-attributes.md)
     * [Color Palettes](docs/user-guides/l-color-attributes.md)
     * [Filters](docs/user-guides/e-filters.md)
@@ -66,7 +70,7 @@
 * [Examples](examples/README.md)
   * [Node/Express](examples/node-app/README.md)
   * [Demo App](examples/demo-app/README.md)
-  * [Open modal](examples/replace-component/README.md)
+  * [Replace Component](examples/replace-component/README.md)
   * [Open modal](examples/open-modal/README.md)
   * [UMD client](examples/umd-client/README.md)
   * [Customize kepler.gl Theme](examples/custom-theme/README.md)
@@ -76,3 +80,4 @@
   * [Contributor Covenant Code of Conduct](contributing/CODE_OF_CONDUCT.md)
 * [Change Log](CHANGELOG.md)
 * [Upgrade Guide](UPGRADE-GUIDE.md)
+* [Upgrade Guide v3.3](docs/upgrade-guide-v3.3.md)

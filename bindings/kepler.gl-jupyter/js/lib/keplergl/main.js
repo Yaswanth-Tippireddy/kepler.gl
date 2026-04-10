@@ -5,7 +5,7 @@
 import createAppStore from './store';
 import renderRoot from './components/root';
 import document from 'global/document';
-import window from 'global/window';
+import Window from 'global/window';
 import {addDataConfigToKeplerGl} from './kepler.gl';
 
 const map = (function initKeplerGl() {
@@ -13,23 +13,22 @@ const map = (function initKeplerGl() {
   const store = createAppStore();
 
   const divElmt = document.createElement('div');
-  divElmt.setAttribute(
-    'style',
-    'width: 100vw; height: 100vh; position: absolute'
-  );
+  divElmt.setAttribute('style', 'width: 100vw; height: 100vh; position: absolute');
   document.body.appendChild(divElmt);
 
   return {
-    render: () => {
-      renderRoot({id, store, ele: divElmt});
+    render: (onMounted) => {
+      renderRoot({ id, store, ele: divElmt, onMounted });
     },
     store
   };
 })();
 
-map.render();
+function loadDataConfig(keplerGlMap) {
+  const { data, config, options } = Window.__keplerglDataConfig || {};
+  addDataConfigToKeplerGl({ data, config, options, store: keplerGlMap.store });
+}
 
-(function loadDataConfig(keplerGlMap) {
-  const {data, config, options} = window.__keplerglDataConfig || {};
-  addDataConfigToKeplerGl({data, config, options, store: keplerGlMap.store});
-})(map);
+map.render(() => {
+  loadDataConfig(map);
+});

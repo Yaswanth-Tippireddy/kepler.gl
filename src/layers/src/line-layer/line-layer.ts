@@ -11,8 +11,9 @@ import {EnhancedLineLayer} from '@kepler.gl/deckgl-layers';
 import LineLayerIcon from './line-layer-icon';
 import {VisualChannel} from '../base-layer';
 import ArcLayer, {ArcLayerConfig} from '../arc-layer/arc-layer';
-import {LAYER_VIS_CONFIGS, ColorRange, PROJECTED_PIXEL_SIZE_MULTIPLIER} from '@kepler.gl/constants';
+import {LAYER_VIS_CONFIGS, PROJECTED_PIXEL_SIZE_MULTIPLIER} from '@kepler.gl/constants';
 import {
+  ColorRange,
   Merge,
   RGBColor,
   VisConfigColorRange,
@@ -230,7 +231,7 @@ export default class LineLayer extends ArcLayer {
     };
   }
 
-  static findDefaultLayerProps({fields, fieldPairs = []}: KeplerTable): {
+  static findDefaultLayerProps({fieldPairs = []}: KeplerTable): {
     props: {color?: RGBColor; columns: LineLayerColumnsConfig; label: string}[];
   } {
     if (fieldPairs.length < 2) {
@@ -238,7 +239,7 @@ export default class LineLayer extends ArcLayer {
     }
 
     const defaultAltColumn = {value: null, fieldIdx: -1, optional: true};
-    const props: {columns: LineLayerColumnsConfig; label: string; isVisible: boolean} = {
+    const props: {columns: LineLayerColumnsConfig; label: string} = {
       // connect the first two point layer with line
       // TODO: fill default columns by parsing supported_column_modes
       columns: {
@@ -259,8 +260,7 @@ export default class LineLayer extends ArcLayer {
         geoarrow0: {...defaultAltColumn},
         geoarrow1: {...defaultAltColumn}
       },
-      label: `${fieldPairs[0].defaultName} -> ${fieldPairs[1].defaultName} line`,
-      isVisible: false
+      label: `${fieldPairs[0].defaultName} -> ${fieldPairs[1].defaultName} line`
     };
 
     return {props: [props]};

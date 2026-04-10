@@ -1,27 +1,28 @@
 // SPDX-License-Identifier: MIT
 // Copyright contributors to the kepler.gl project
 
-import window from 'global/window';
+import Window from 'global/window';
 import {BrushingExtension} from '@deck.gl/extensions';
-import GL from '@luma.gl/constants';
 
 import {SvgIconLayer} from '@kepler.gl/deckgl-layers';
 import IconLayerIcon from './icon-layer-icon';
-import {ICON_FIELDS, KEPLER_UNFOLDED_BUCKET, ColorRange} from '@kepler.gl/constants';
+import {ICON_FIELDS, CULL_MODE} from '@kepler.gl/constants';
 import IconInfoModalFactory from './icon-info-modal';
 import Layer, {LayerBaseConfig, LayerBaseConfigPartial} from '../base-layer';
-import {assignPointPairToLayerColumn} from '../layer-utils';
+import {assignPointPairToLayerColumn, FindDefaultLayerPropsReturnValue} from '../layer-utils';
 import {isTest} from '@kepler.gl/utils';
 import {getTextOffsetByRadius, formatTextLabelData} from '../layer-text-label';
 import {default as KeplerTable} from '@kepler.gl/table';
-import {DataContainerInterface} from '@kepler.gl/utils';
+import {getApplicationConfig, DataContainerInterface} from '@kepler.gl/utils';
 import {
+  ColorRange,
   VisConfigBoolean,
   VisConfigColorRange,
   VisConfigNumber,
   VisConfigRange,
   Merge,
-  LayerColumn
+  LayerColumn,
+  BindedLayerCallbacks
 } from '@kepler.gl/types';
 
 export type IconLayerColumnsConfig = {
@@ -58,8 +59,6 @@ export type IconLayerConfig = Merge<
 export type IconLayerData = {index: number; icon: string};
 
 const brushingExtension = new BrushingExtension();
-
-export const SVG_ICON_URL = `${KEPLER_UNFOLDED_BUCKET}/icons/svg-icons.json`;
 
 export const iconPosAccessor =
   ({lat, lng, altitude}: IconLayerColumnsConfig) =>
@@ -112,6 +111,9 @@ export default class IconLayer extends Layer {
   getIconAccessor: (dataContainer: DataContainerInterface) => (d: any) => any;
   _layerInfoModal: () => JSX.Element;
   iconGeometry: IconGeometry;
+  iconGeometryVersion: number;
+
+  onRedrawNeeded: BindedLayerCallbacks['onRedrawNeeded'];
 
   declare visConfigSettings: IconLayerVisConfigSettings;
   declare config: IconLayerConfig;
@@ -132,6 +134,7 @@ export default class IconLayer extends Layer {
 
     this._layerInfoModal = IconInfoModalFactory(props.svgIcons);
     this.iconGeometry = props.iconGeometry || null;
+    this.iconGeometryVersion = 0;
 
     if (isTest()) {
       return;
@@ -146,7 +149,7 @@ export default class IconLayer extends Layer {
   }
 
   get svgIconUrl() {
-    return SVG_ICON_URL;
+    return `${getApplicationConfig().cdnUrl}/icons/svg-icons.json`;
   }
 
   get type(): 'icon' {
@@ -197,6 +200,10 @@ export default class IconLayer extends Layer {
     };
   }
 
+  getZoomFactor({zoom, zoomOffset = 0}: {zoom: number; zoomOffset?: number}) {
+    return Math.pow(2, 14 - zoom + zoomOffset);
+  }
+
   getSvgIcons() {
     const fetchConfig = {
       method: 'GET',
@@ -204,13 +211,27 @@ export default class IconLayer extends Layer {
       cache: 'no-cache'
     };
 
-    if (window.fetch && this.svgIconUrl) {
-      window
-        .fetch(this.svgIconUrl, fetchConfig)
-        .then(response => response.json())
+    if (Window.fetch && this.svgIconUrl) {
+      Window.fetch(this.svgIconUrl, fetchConfig)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Failed to load svg-icons.json: ${response.status}`);
+          }
+          return response.json();
+        })
         .then((parsed: {svgIcons?: any[]} = {}) => {
           this.setSvgIcons(parsed.svgIcons);
+        })
+        .catch(err => {
+          console.error('Error fetching or parsing svg-icons.json:', err);
+          // Fallback to empty geometry to allow default icon rendering
+          this.iconGeometry = {};
+          this.iconGeometryVersion += 1;
         });
+    } else {
+      // No fetch available; set empty geometry so layer can render default icons
+      this.iconGeometry = {};
+      this.iconGeometryVersion += 1;
     }
   }
 
@@ -223,11 +244,20 @@ export default class IconLayer extends Layer {
       {}
     );
 
+    // Increment version when SVG icons are loaded to trigger layer re-render
+    this.iconGeometryVersion += 1;
+
     this._layerInfoModal = IconInfoModalFactory(svgIcons);
+
+    // Trigger a map redraw so deck.gl picks up the new geometry
+    this.onRedrawNeeded?.();
   }
 
-  static findDefaultLayerProps({fieldPairs = [], fields = []}: KeplerTable) {
-    const notFound = {props: []};
+  static findDefaultLayerProps({
+    fieldPairs = [],
+    fields = []
+  }: KeplerTable): FindDefaultLayerPropsReturnValue {
+    const notFound: FindDefaultLayerPropsReturnValue = {props: []};
     if (!fieldPairs.length || !fields.length) {
       return notFound;
     }
@@ -329,13 +359,17 @@ export default class IconLayer extends Layer {
     };
   }
 
-  updateLayerMeta(dataContainer, getPosition) {
+  updateLayerMeta(dataset: KeplerTable, getPosition) {
+    const {dataContainer} = dataset;
     const bounds = this.getPointsBounds(dataContainer, getPosition);
     this.updateMeta({bounds});
   }
 
   renderLayer(opts) {
-    const {data, gpuFilter, objectHovered, mapState, interactionConfig} = opts;
+    const {data, gpuFilter, objectHovered, mapState, interactionConfig, layerCallbacks} = opts;
+
+    // Store callback to trigger map redraw when icon geometry loads asynchronously
+    this.onRedrawNeeded = layerCallbacks?.onRedrawNeeded;
 
     const radiusScale = this.getRadiusScaleByZoom(mapState);
 
@@ -380,45 +414,48 @@ export default class IconLayer extends Layer {
     const parameters = {
       // icons will be flat on the map when the altitude column is not used
       depthTest: this.config.columns.altitude?.fieldIdx > -1,
-      cullFace: GL.FRONT
+      cullMode: CULL_MODE.FRONT
     };
 
-    return !this.iconGeometry
-      ? []
-      : [
-          new SvgIconLayer({
-            ...defaultLayerProps,
-            ...brushingProps,
-            ...layerProps,
-            ...data,
-            parameters,
-            getIconGeometry: id => this.iconGeometry?.[id],
+    // Append geometry version to layer id so deck.gl treats it as new layer when geometry changes
+    const baseLayerId = defaultLayerProps.id || this.id;
+    const layerIdWithVersion = `${baseLayerId}_${this.iconGeometryVersion}`;
 
-            // update triggers
-            updateTriggers,
-            extensions
-          }),
+    return [
+      new SvgIconLayer({
+        ...defaultLayerProps,
+        id: layerIdWithVersion,
+        ...brushingProps,
+        ...layerProps,
+        ...data,
+        parameters,
+        getIconGeometry: id => this.iconGeometry?.[id],
 
-          // hover layer
-          ...(hoveredObject
-            ? [
-                // @ts-expect-error SvgIconLayerProps needs getIcon Field
-                new SvgIconLayer({
-                  ...this.getDefaultHoverLayerProps(),
-                  ...layerProps,
-                  visible: defaultLayerProps.visible,
-                  data: [hoveredObject],
-                  parameters,
-                  getPosition: data.getPosition,
-                  getRadius: data.getRadius,
-                  getFillColor: this.config.highlightColor,
-                  getIconGeometry: id => this.iconGeometry?.[id]
-                })
-              ]
-            : []),
+        // update triggers
+        updateTriggers,
+        extensions
+      }),
 
-          // text label layer
-          ...labelLayers
-        ];
+      // hover layer
+      ...(hoveredObject
+        ? [
+            new SvgIconLayer({
+              ...this.getDefaultHoverLayerProps(),
+              id: `${layerIdWithVersion}-hover`,
+              ...layerProps,
+              visible: defaultLayerProps.visible,
+              data: [hoveredObject],
+              parameters,
+              getPosition: data.getPosition,
+              getRadius: data.getRadius,
+              getFillColor: this.config.highlightColor,
+              getIconGeometry: id => this.iconGeometry?.[id]
+            })
+          ]
+        : []),
+
+      // text label layer
+      ...labelLayers
+    ];
   }
 }

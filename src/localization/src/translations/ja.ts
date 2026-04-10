@@ -192,6 +192,8 @@ export default {
     disable3DMap: '3D地図を無効化',
     DrawOnMap: '地図上に図形を描画',
     selectLocale: '言語設定',
+    showAiAssistantPanel: 'AI 助手パネルを表示',
+    hideAiAssistantPanel: 'AI 助手パネルを非表示',
     hideLayerPanel: 'レイヤパネルを非表示',
     showLayerPanel: 'レイヤパネルを表示',
     moveToTop: 'データレイヤの手前に移動',
@@ -249,6 +251,7 @@ export default {
       ratio16_9: '16:9',
       resolutionTitle: '解像度',
       resolutionDescription: '印刷には高解像度が適しています。',
+      resolutionPlaceholder: '解像度を選択...',
       mapLegendTitle: '地図の凡例',
       mapLegendAdd: '地図に判例を追加'
     },

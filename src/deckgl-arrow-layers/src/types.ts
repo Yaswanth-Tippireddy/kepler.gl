@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) vis.gl contributors
 
-import type {BinaryAttribute, Color, PickingInfo} from '@deck.gl/core/typed';
+import type {BinaryAttribute, Color, PickingInfo} from '@deck.gl/core';
 import {TypedArray} from '@math.gl/types';
 import * as arrow from 'apache-arrow';
 
@@ -73,6 +73,6 @@ export type NormalAccessor =
   | Accessor<arrow.Table, arrow.Vector<arrow.FixedSizeList<arrow.Float32>>>;
 
 export type ExtensionProps = {
-  getFiltered?: ({index: number}) => number;
+  getFiltered?: ({index}: {index: number}) => number;
   getFilterValue?: (d: any, objectInfo?: {index: number}) => (number | number[])[];
 };

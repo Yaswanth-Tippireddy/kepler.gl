@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: MIT
 // Copyright contributors to the kepler.gl project
 
+import * as arrow from 'apache-arrow';
 import {
   ALL_FIELD_TYPES,
   FIELD_OPTS,
   TOOLTIP_FORMATS,
   TOOLTIP_FORMAT_TYPES
 } from '@kepler.gl/constants';
-import {getSampleForTypeAnalyze, getFieldsFromData} from '@kepler.gl/common-utils';
+import {
+  getSampleForTypeAnalyze,
+  getSampleForTypeAnalyzeArrow,
+  getFieldsFromData
+} from '@kepler.gl/common-utils';
 import {Analyzer} from 'type-analyzer';
 import assert from 'assert';
 
@@ -154,7 +159,7 @@ export function findDefaultColorField({
   fieldPairs: FieldPair[];
 }): null | Field {
   const fieldsWithoutExcluded = fields.filter(field => {
-    if (field.type !== ALL_FIELD_TYPES.real && field.type !== ALL_FIELD_TYPES.integer) {
+    if (field.type !== ALL_FIELD_TYPES.real) {
       // Only select numeric fields.
       return false;
     }
@@ -235,8 +240,8 @@ export function validateInputData(data: ProtoDataset['data']): ProcessorResult {
   } else if (!Array.isArray(data.fields)) {
     assert('addDataToMap Error: expect dataset.data.fields to be an array');
     return null;
-  } else if (!Array.isArray(data.rows)) {
-    assert('addDataToMap Error: expect dataset.data.rows to be an array');
+  } else if (!Array.isArray(data.rows) && !Array.isArray(data.cols)) {
+    assert('addDataToMap Error: expect dataset.data.rows or cols to be an array');
     return null;
   }
 
@@ -260,21 +265,25 @@ export function validateInputData(data: ProtoDataset['data']): ProcessorResult {
       return false;
     }
 
-    if (!fields.every(field => field.analyzerType)) {
-      assert('field missing analyzerType');
+    if (!f.analyzerType) {
+      assert(`field ${i} missing analyzerType`);
       return false;
     }
 
     // check time format is correct based on first 10 not empty element
     if (f.type === ALL_FIELD_TYPES.timestamp) {
-      const sample = findNonEmptyRowsAtField(rows, i, 10).map(r => ({ts: r[i]}));
+      const sample = (
+        cols ? findNonEmptyRowsAtFieldArrow(cols, i, 10) : findNonEmptyRowsAtField(rows, i, 10)
+      ).map(r => ({ts: r[i]}));
       const analyzedType = Analyzer.computeColMeta(sample)[0];
       return analyzedType && analyzedType.category === 'TIME' && analyzedType.format === f.format;
     }
 
     // check existing string field is H3 type
     if (f.type === ALL_FIELD_TYPES.string) {
-      const sample = findNonEmptyRowsAtField(rows, i, 10).map(r => r[i]);
+      const sample = (
+        cols ? findNonEmptyRowsAtFieldArrow(cols, i, 10) : findNonEmptyRowsAtField(rows, i, 10)
+      ).map(r => r[i]);
       return sample.every(item => !h3IsValid(item));
     }
 
@@ -287,10 +296,15 @@ export function validateInputData(data: ProtoDataset['data']): ProcessorResult {
 
   // if any field has missing type, recalculate it for everyone
   // because we simply lost faith in humanity
-  const sampleData = getSampleForTypeAnalyze({
-    fields: fields.map(f => f.name),
-    rows
-  });
+  const sampleData = cols
+    ? getSampleForTypeAnalyzeArrow(
+        cols,
+        fields.map(f => f.name)
+      )
+    : getSampleForTypeAnalyze({
+        fields: fields.map(f => f.name),
+        rows
+      });
   const fieldOrder = fields.map(f => f.name);
   const meta = getFieldsFromData(sampleData, fieldOrder);
   const updatedFields = fields.map((f, i) => ({
@@ -300,7 +314,7 @@ export function validateInputData(data: ProtoDataset['data']): ProcessorResult {
     analyzerType: meta[i].analyzerType
   }));
 
-  return {fields: updatedFields, rows};
+  return {fields: updatedFields, rows, ...(cols ? {cols} : {})};
 }
 
 function findNonEmptyRowsAtField(rows: unknown[][], fieldIdx: number, total: number): any[] {
@@ -309,6 +323,24 @@ function findNonEmptyRowsAtField(rows: unknown[][], fieldIdx: number, total: num
   while (sample.length < total && i < rows.length) {
     if (notNullorUndefined(rows[i]?.[fieldIdx])) {
       sample.push(rows[i]);
+    }
+    i++;
+  }
+  return sample;
+}
+
+function findNonEmptyRowsAtFieldArrow(
+  cols: arrow.Vector[],
+  fieldIdx: number,
+  total: number
+): any[] {
+  const sample: any[] = [];
+  const numRows = cols[fieldIdx].length;
+  let i = 0;
+  while (sample.length < total && i < numRows) {
+    if (notNullorUndefined(cols[fieldIdx].get(i))) {
+      const row = cols.map(col => col.get(i));
+      sample.push(row);
     }
     i++;
   }

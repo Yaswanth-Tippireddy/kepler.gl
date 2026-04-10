@@ -96,6 +96,10 @@ export default {
     aggregateBy: 'Aggregate {field} by',
     '3DModel': '3D Model',
     '3DModelOptions': '3D Model Options',
+    service: 'Service',
+    layer: 'Layer',
+    appearance: 'Appearance',
+    uniqueIdField: 'Unique ID Field',
     type: {
       point: 'point',
       arc: 'arc',
@@ -111,7 +115,14 @@ export default {
       hexagonid: 'H3',
       trip: 'trip',
       s2: 'S2',
-      '3d': '3D'
+      '3d': '3D',
+      vectortile: 'vector tile',
+      rastertile: 'raster tile',
+      wms: 'WMS',
+      tile3d: '3D tile'
+    },
+    wms: {
+      hover: 'Value:'
     },
     layerUpdateError:
       'An error occurred during layer update: {errorMessage}. Make sure the format of the input data is valid.',
@@ -131,6 +142,7 @@ export default {
     billboardDescription: 'Orient geometry towards the camera',
     fadeTrail: 'Fade trail',
     opacity: 'Opacity',
+    pointSize: 'Point Size',
     coverage: 'Coverage',
     outline: 'Outline',
     colorRange: 'Color range',
@@ -165,7 +177,8 @@ export default {
     allowHover: 'Allow Hover',
     showNeighborOnHover: 'Highlight Neighbors On Hover',
     showHighlightColor: 'Show highlight Color',
-    darkModeEnabled: 'Dark base map'
+    darkModeEnabled: 'Dark base map',
+    transparentBackground: 'Transparent Background'
   },
   layerManager: {
     addData: 'Add Data',
@@ -207,7 +220,11 @@ export default {
     removeDataset: 'Remove dataset'
   },
   datasetInfo: {
-    rowCount: '{rowCount} rows'
+    rowCount: '{rowCount} rows',
+    vectorTile: 'Vector tile',
+    rasterTile: 'Raster tile',
+    wmsTile: 'WMS tile',
+    tile3d: '3D tile'
   },
   tooltip: {
     hideLayer: 'Hide layer',
@@ -227,6 +244,8 @@ export default {
     disable3DMap: 'Disable 3D Map',
     DrawOnMap: 'Draw on map',
     selectLocale: 'Select locale',
+    showAiAssistantPanel: 'Show AI Assistant',
+    hideAiAssistantPanel: 'Hide AI Assistant',
     hideLayerPanel: 'Hide layer panel',
     showLayerPanel: 'Show layer panel',
     moveToTop: 'Move to top of data layers',
@@ -303,6 +322,7 @@ export default {
       ratio16_9: '16:9',
       resolutionTitle: 'Resolution',
       resolutionDescription: 'High resolution is better for prints.',
+      resolutionPlaceholder: 'Select resolution...',
       mapLegendTitle: 'Map Legend',
       mapLegendAdd: 'Add legend on map'
     },
@@ -317,7 +337,8 @@ export default {
       filteredData: 'Filtered data',
       unfilteredData: 'Unfiltered Data',
       fileCount: '{fileCount} Files',
-      rowCount: '{rowCount} Rows'
+      rowCount: '{rowCount} Rows',
+      tiledDatasetWarning: "* Export Data for Tiled datasets isn't supported"
     },
     deleteData: {
       warning: 'you are going to delete this dataset. It will affect {length} layers'
@@ -371,6 +392,8 @@ export default {
         tokenPlaceholder: 'Paste your Mapbox access token',
         tokenMisuseWarning:
           '* If you do not provide your own token, the map may fail to display at any time when we replace ours to avoid misuse. ',
+        tokenSecurityWarning:
+          '* Warning: your Mapbox token will be embedded in the exported HTML file. Anyone with access to this file can see and use your token. Use a scoped token with URL restrictions when possible. ',
         tokenDisclaimer: 'You can change the Mapbox token later using the following instructions: ',
         tokenUpdate: 'How to update an existing map token.',
         modeTitle: 'Map Mode',
@@ -396,6 +419,7 @@ export default {
     },
     loadData: {
       upload: 'Load Files',
+      tileset: 'Tileset',
       storage: 'Load from Storage'
     },
     tripInfo: {
@@ -454,7 +478,7 @@ ${'```json'}
 ${'```'}
 
 ### 2. Create polygon from a Geometry column in Csv table
-Geometries (Polygons, Points, LindStrings etc) can be embedded into CSV as a \`GeoJSON\` or \`WKT\` formatted string. 
+Geometries (Polygons, Points, LindStrings etc) can be embedded into CSV as a \`GeoJSON\` or \`WKT\` formatted string.
 
 #### 2.1 \`GeoJSON\` string
 Example data.csv with \`GeoJSON\` string
@@ -465,7 +489,7 @@ ${'```'}
 
 #### 2.2 \`WKT\` string
 Example data.csv with \`WKT\` string
-[The Well-Known Text (WKT)](https://dev.mysql.com/doc/refman/5.7/en/gis-data-formats.html#gis-wkt-format) representation of geometry values is designed for exchanging geometry data in ASCII form. 
+[The Well-Known Text (WKT)](https://dev.mysql.com/doc/refman/5.7/en/gis-data-formats.html#gis-wkt-format) representation of geometry values is designed for exchanging geometry data in ASCII form.
 
 Example data.csv with WKT
 ${'```txt'}
@@ -476,11 +500,11 @@ ${'```'}
       descriptionTable: `Paths can be created by joining a list of points from latitude and longitude, sort by an index field (e.g. timestamp) and group by uniq ids.
 
   ### Layer columns:
-  - **id**: - *required* - A \`id\` column is used to group by points. Points with the same id will be joined into a single path.
-  - **lat**: - *required* - The latitude of the point
-  - **lon**: - *required* - The longitude of the point
-  - **alt**: - *optional* - The altitude of the point
-  - **sort by**: - *optional* - A \`sort by\` column is used to sort the points, if not specified, points will be sorted by row index.
+  - **id**: - *required*&nbsp;- A \`id\` column is used to group by points. Points with the same id will be joined into a single path.
+  - **lat**: - *required*&nbsp;- The latitude of the point
+  - **lon**: - *required*&nbsp;- The longitude of the point
+  - **alt**: - *optional*&nbsp;- The altitude of the point
+  - **sort by**: - *optional*&nbsp;- A \`sort by\` column is used to sort the points, if not specified, points will be sorted by row index.
 `,
       exampleTable: 'Example CSV'
     },
@@ -569,10 +593,10 @@ ${'```'}
   },
   color: {
     customPalette: 'Custom Palette',
-    steps: 'steps',
-    type: 'type',
-    reversed: 'reversed',
-    opacity: 'Opacity',
+    steps: 'Steps',
+    type: 'Type',
+    colorBlindSafe: 'Colorblind Safe',
+    reversed: 'Reversed',
     disableStepReason: `Can't change number of steps with custom color breaks, use custom palette to edit steps`,
     preset: 'Preset Colors',
     picker: 'Color Picker'
@@ -597,6 +621,11 @@ ${'```'}
     uploading: 'Uploading',
     fileNotSupported: 'File {errorFiles} is not supported.',
     or: 'or'
+  },
+  tilesetSetup: {
+    header: 'Setup Vector Tiles',
+    rasterTileHeader: 'Setup Raster Tiles',
+    addTilesetText: 'Add Tileset'
   },
   geocoder: {
     title: 'Enter an address or coordinates, ex 37.79,-122.40'

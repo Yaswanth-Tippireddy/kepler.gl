@@ -25,10 +25,10 @@ import {
 import {default as KeplerTable} from '@kepler.gl/table';
 import PointLayerIcon from './point-layer-icon';
 import {
+  DatasetType,
   LAYER_VIS_CONFIGS,
   DEFAULT_LAYER_COLOR,
   CHANNEL_SCALES,
-  ColorRange,
   DEFAULT_COLOR_UI
 } from '@kepler.gl/constants';
 import {getTextOffsetByRadius, formatTextLabelData} from '../layer-text-label';
@@ -36,12 +36,16 @@ import {
   assignPointPairToLayerColumn,
   isLayerHoveredFromArrow,
   getBoundsFromArrowMetadata,
+  getGeoArrowPointLayerProps,
+  isGeoArrowPointField,
   createGeoArrowPointVector,
   getFilteredIndex,
-  getNeighbors
+  getNeighbors,
+  FindDefaultLayerProps
 } from '../layer-utils';
 import {getGeojsonPointDataMaps, GeojsonPointDataMaps} from '../geojson-layer/geojson-utils';
 import {
+  ColorRange,
   Merge,
   RGBColor,
   VisConfigBoolean,
@@ -149,12 +153,14 @@ const SUPPORTED_COLUMN_MODES = [
   {
     key: COLUMN_MODE_GEOJSON,
     label: 'GeoJSON Feature',
-    requiredColumns: geojsonRequiredColumns
+    requiredColumns: geojsonRequiredColumns,
+    verifyField: f => !isGeoArrowPointField(f)
   },
   {
     key: COLUMN_MODE_GEOARROW,
     label: 'Geoarrow Points',
-    requiredColumns: geoarrowRequiredColumns
+    requiredColumns: geoarrowRequiredColumns,
+    verifyField: f => isGeoArrowPointField(f)
   }
 ];
 const DEFAULT_COLUMN_MODE = COLUMN_MODE_POINTS;
@@ -313,7 +319,6 @@ export default class PointLayer extends Layer {
 
     if (defaultColorField) {
       this.updateLayerConfig({
-        // @ts-expect-error Remove this after updateLayerConfig converted into generic function
         colorField: defaultColorField
       });
       this.updateLayerVisualChannel(dataset, 'color');
@@ -322,13 +327,14 @@ export default class PointLayer extends Layer {
     return this;
   }
 
-  static findDefaultLayerProps({fieldPairs = []}: KeplerTable) {
-    const props: {
-      label: string;
-      color?: RGBColor;
-      isVisible?: boolean;
-      columns?: PointLayerColumnsConfig;
-    }[] = [];
+  static findDefaultLayerProps(dataset: KeplerTable) {
+    const {fieldPairs = [], type, label} = dataset;
+
+    const props: FindDefaultLayerProps[] = [];
+
+    if (type === DatasetType.VECTOR_TILE) {
+      return {props};
+    }
 
     // Make layer for each pair
     fieldPairs.forEach(pair => {
@@ -340,7 +346,11 @@ export default class PointLayer extends Layer {
         isVisible?: boolean;
         columns?: PointLayerColumnsConfig;
       } = {
-        label: pair.defaultName || 'Point'
+        label:
+          // Skip the generic 'point' fallback from findPointFieldPairs and use the dataset label instead
+          pair.defaultName && pair.defaultName !== 'point'
+            ? pair.defaultName
+            : (typeof label === 'string' && label.replace(/\.[^/.]+$/, '')) || 'Point'
       };
 
       // default layer color for begintrip and dropoff point
@@ -358,7 +368,9 @@ export default class PointLayer extends Layer {
       props.push(prop);
     });
 
-    return {props};
+    const altProps = getGeoArrowPointLayerProps(dataset);
+
+    return {props, altProps};
   }
 
   getDefaultLayerConfig(props: LayerBaseConfigPartial) {
@@ -480,7 +492,8 @@ export default class PointLayer extends Layer {
   }
   /* eslint-enable complexity */
 
-  updateLayerMeta(dataContainer) {
+  updateLayerMeta(dataset: KeplerTable) {
+    const {dataContainer} = dataset;
     this.dataContainer = dataContainer;
 
     if (this.config.columnMode === COLUMN_MODE_GEOJSON) {
@@ -489,7 +502,7 @@ export default class PointLayer extends Layer {
     } else if (this.config.columnMode === COLUMN_MODE_GEOARROW) {
       const boundsFromMetadata = getBoundsFromArrowMetadata(
         this.config.columns.geoarrow,
-        dataContainer
+        dataContainer as ArrowDataContainer
       );
       if (boundsFromMetadata) {
         this.updateMeta({bounds: boundsFromMetadata});
@@ -618,7 +631,7 @@ export default class PointLayer extends Layer {
           updateTriggers,
           getFiltered: data.getFiltered
         },
-        Boolean(this.geoArrowVector)
+        this.geoArrowVector
           ? {
               ...opts,
               data: {...opts.data, getPosition}
@@ -652,9 +665,7 @@ export default class PointLayer extends Layer {
   ) {
     // for arrow format, `object` is the Arrow row object Proxy,
     // and index is passed in `hoverInfo`.
-    const index = Boolean(this.geoArrowVector)
-      ? hoverInfo?.index
-      : (object as {index: number}).index;
+    const index = this.geoArrowVector ? hoverInfo?.index : (object as {index: number}).index;
     if (index >= 0) {
       return dataContainer.row(index);
     }

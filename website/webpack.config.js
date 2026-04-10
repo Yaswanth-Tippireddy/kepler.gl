@@ -49,23 +49,26 @@ const COMMON_CONFIG = {
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
     modules: ['node_modules', SRC_DIR],
-    alias: RESOLVE_ALIASES
+    alias: {
+      ...RESOLVE_ALIASES
+    }
   },
 
   module: {
     rules: [
       {
-        // Compile ES2015 using bable
-        test: /\.(js|jsx|ts|tsx)$/,
+        // Compile ES2015 using babel
+        test: /\.(js|jsx|ts|tsx|mjs)$/,
         loader: 'babel-loader',
         options: BABEL_CONFIG,
         include: [
           resolve(__dirname, './src'),
           resolve(LIB_DIR, './examples'),
           resolve(LIB_DIR, './src'),
-          /node_modules\/react-ai-assist/
+          /node_modules\/@monaco-editor/,
+          /node_modules\/@radix-ui/
         ],
-        exclude: [/node_modules\/(?!react-ai-assist)/]
+        exclude: [/node_modules\/(?!(@monaco-editor|@radix-ui))/]
       },
       // Add css loader for ai-assistant
       {
@@ -83,7 +86,7 @@ const COMMON_CONFIG = {
       // for compiling apache-arrow ESM module
       {
         test: /\.mjs$/,
-        include: /node_modules\/apache-arrow/,
+        include: /node_modules[\\/]apache-arrow/,
         type: 'javascript/auto'
       },
       {
@@ -98,24 +101,36 @@ const COMMON_CONFIG = {
         loader: 'babel-loader',
         options: BABEL_CONFIG,
         include: [
-          /node_modules\/@probe.gl/,
-          /node_modules\/@loaders.gl/,
-          /node_modules\/@math.gl/,
-          /node_modules\/@geoarrow/
+          /node_modules[\\/]@probe.gl/,
+          /node_modules[\\/]@loaders.gl/,
+          /node_modules[\\/]@math.gl/,
+          /node_modules[\\/]@geoarrow/
         ]
+      },
+      {
+        test: /\.m?js$/,
+        include: [
+          /node_modules\/@duckdb\/duckdb-wasm/,
+          /node_modules\/@radix-ui/,
+          /node_modules\/@monaco-editor\/react/
+        ],
+        type: 'javascript/auto'
       }
     ]
   },
 
   devServer: {
-    historyApiFallback: true,
+    historyApiFallback: true
     // Add new options if needed
   },
 
   // Optional: Enables reading mapbox token from environment variable
   plugins: [
     // Provide default values to suppress warnings
-    new webpack.EnvironmentPlugin(WEBPACK_ENV_VARIABLES)
+    new webpack.EnvironmentPlugin(WEBPACK_ENV_VARIABLES),
+    new webpack.DefinePlugin({
+      'process.env.NODE_ENV': JSON.stringify('production')
+    })
   ],
 
   // Update optimization settings
@@ -130,7 +145,7 @@ const addDevConfig = config => {
     test: /\.js$/,
     use: ['source-map-loader'],
     enforce: 'pre',
-    exclude: [/node_modules\/react-palm/, /node_modules\/react-data-grid/]
+    exclude: [/node_modules[\\/]react-palm/, /node_modules[\\/]react-data-grid/]
   });
 
   return Object.assign(config, {
@@ -148,7 +163,7 @@ const addProdConfig = config => {
     output: {
       path: resolve(__dirname, './dist'),
       filename: 'bundle.js',
-      publicPath: "/"
+      publicPath: '/'
     }
   });
 };

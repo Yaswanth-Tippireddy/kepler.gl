@@ -36,8 +36,8 @@ const StyledInput = styled.input<StyledInputProps>`
   outline: 0;
   font-size: ${props => props.theme.inputFontSize};
 
-  :active,
-  :focus,
+  &:active,
+  &:focus,
   &.focus,
   &.active {
     outline: 0;
@@ -104,6 +104,9 @@ function ExportHtmlMapFactory(): React.ComponentType<ExportHtmlMapProps> {
           <div className="disclaimer">
             <StyledWarning>
               <FormattedMessage id={'modal.exportMap.html.tokenMisuseWarning'} />
+            </StyledWarning>
+            <StyledWarning>
+              <FormattedMessage id={'modal.exportMap.html.tokenSecurityWarning'} />
             </StyledWarning>
             <FormattedMessage id={'modal.exportMap.html.tokenDisclaimer'} />
             <ExportMapLink href={EXPORT_HTML_MAP_DOC}>
